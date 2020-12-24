@@ -57,4 +57,4 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
-
+/Light Probes/.vsconfig
