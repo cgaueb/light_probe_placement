@@ -116,64 +116,119 @@ public class LumibricksScript : MonoBehaviour
     #endregion
 
     #region Public Functions
-    public void Init()
+    public bool Init()
     {
+        var component = GetComponent<LightProbeGroup>();
+        var nv = component.GetComponentInChildren<NavMeshAgent>();
+
         if (generatorListLightProbes != null || generatorListEvaluationPoints != null)
         {
-            return;
+            if (nv != null && !generatorListLightProbes.ContainsKey(PlacementType.NavMesh))
+            {
+                // dynamically load NavMesh components
+                generatorListLightProbes[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
+                generatorListLightProbes[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
+
+                generatorListEvaluationPoints[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
+                generatorListEvaluationPoints[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
+                UnityEngine.Debug.Log("Nav mesh volume detected. Loading NavMesh elements");
+            } else if (nv == null && generatorListLightProbes.ContainsKey(PlacementType.NavMesh))
+            {
+                generatorListLightProbes.Remove(PlacementType.NavMesh);
+                generatorListLightProbes.Remove(PlacementType.NavMeshVolume);
+                generatorListEvaluationPoints.Remove(PlacementType.NavMesh);
+                generatorListEvaluationPoints.Remove(PlacementType.NavMeshVolume);
+                UnityEngine.Debug.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
+            }
+            return true;
         }
         EPMaterial = new Material(Shader.Find("Unlit/Color"));
         EPMaterial.color = new Color(0.87f, 0.15f, 0.15f);
 
-        var component = GetComponent<LightProbeGroup>();
-        var nv = component.GetComponentInChildren<NavMeshAgent>();
-        if (nv == null)
-        {
-            UnityEngine.Debug.LogWarning("No nav mesh volume defined");
-            return;
-        }
 
         generatorListLightProbes = new Dictionary<PlacementType, GeneratorInterface>();
         generatorListLightProbes[PlacementType.Grid] = new GeneratorGrid();
         generatorListLightProbes[PlacementType.Random] = new GeneratorRandom();
         generatorListLightProbes[PlacementType.Stratified] = new GeneratorStratified();
         generatorListLightProbes[PlacementType.Poisson] = new GeneratorPoisson();
-        generatorListLightProbes[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
-        generatorListLightProbes[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
 
         generatorListEvaluationPoints = new Dictionary<PlacementType, GeneratorInterface>();
         generatorListEvaluationPoints[PlacementType.Grid] = new GeneratorGrid();
         generatorListEvaluationPoints[PlacementType.Random] = new GeneratorRandom();
         generatorListEvaluationPoints[PlacementType.Stratified] = new GeneratorStratified();
         generatorListEvaluationPoints[PlacementType.Poisson] = new GeneratorPoisson();
+       
+        if (nv == null)
+        {
+            UnityEngine.Debug.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
+            return false;
+        }
+
+        generatorListLightProbes[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
+        generatorListLightProbes[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
+
         generatorListEvaluationPoints[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
         generatorListEvaluationPoints[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
+
+        return true;
     }
 
     public void Reset()
     {
         Debug.Log("Reset entered");
-     
-        evaluationTotal               = 0.0f;
-        evaluationTotalDecimated      = 0.0f;
+
+        evaluationTotal = 0.0f;
+        evaluationTotalDecimated = 0.0f;
 
         evaluationRandomSamplingCount = 50;
-        terminationEvaluationError    = 0.0f;
-     
-        LightProbesPlaceType          = PlacementType.Poisson;
-        EvaluationPositionsPlaceType  = PlacementType.Random;
-        EvaluationType                = LightProbesEvaluationType.FixedHigh;
+        terminationEvaluationError = 0.0f;
 
-        Array.Clear(evaluationResults, 0, evaluationResults.Length);
-        Array.Clear(evaluationTetrahedron, 0, evaluationTetrahedron.Length);
+        LightProbesPlaceType = PlacementType.Poisson;
+        EvaluationPositionsPlaceType = PlacementType.Random;
+        EvaluationType = LightProbesEvaluationType.FixedHigh;
+
+        if (evaluationResults != null)
+        {
+            Array.Clear(evaluationResults, 0, evaluationResults.Length);
+        }
+        if (evaluationTetrahedron != null)
+        {
+            Array.Clear(evaluationTetrahedron, 0, evaluationTetrahedron.Length);
+        }
 
         Destroy();
+    }
+    private ArrayList populatePlacementPopup()
+    {
+        ArrayList options = new ArrayList();
+        options.AddRange(Enum.GetNames(typeof(PlacementType)));
+        if (!generatorListLightProbes.ContainsKey(PlacementType.NavMesh))
+        {
+            options.Remove(PlacementType.NavMesh.ToString());
+            options.Remove(PlacementType.NavMeshVolume.ToString());
+            if (LightProbesPlaceType == PlacementType.NavMesh || LightProbesPlaceType == PlacementType.NavMeshVolume)
+            {
+                LightProbesPlaceType = PlacementType.Poisson;
+            }
+            if (EvaluationPositionsPlaceType == PlacementType.NavMesh || EvaluationPositionsPlaceType == PlacementType.NavMeshVolume)
+            {
+                EvaluationPositionsPlaceType = PlacementType.Random;
+            }
+        }
+        return options;
     }
 
     public void populateGUI_LightProbes()
     {
         sceneVolumeLP = EditorGUILayout.ObjectField("LP Volume:", sceneVolumeLP, typeof(GameObject), true) as GameObject;
-        LightProbesPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The LP placement method"), LightProbesPlaceType);
+
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The LP placement method"));
+        string[] options = (string[])populatePlacementPopup().ToArray(typeof(string));
+        LightProbesPlaceType = (PlacementType)EditorGUILayout.Popup((int)LightProbesPlaceType, options);
+        EditorGUILayout.EndHorizontal();
+
+        //LightProbesPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The LP placement method"), LightProbesPlaceType);
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
         currentLightProbesGenerator.populateGUI_Initialization();
     }
@@ -188,7 +243,14 @@ public class LumibricksScript : MonoBehaviour
     public void populateGUI_EvaluationPoints()
     {
         sceneVolumeEP = EditorGUILayout.ObjectField("EP Volume:", sceneVolumeEP, typeof(GameObject), true) as GameObject;
-        EvaluationPositionsPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The EP placement method"), EvaluationPositionsPlaceType);
+
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The EP placement method"));
+        string[] options = (string[])populatePlacementPopup().ToArray(typeof( string ));
+        EvaluationPositionsPlaceType = (PlacementType)EditorGUILayout.Popup((int)EvaluationPositionsPlaceType, options);
+        EditorGUILayout.EndHorizontal();
+
+        //EvaluationPositionsPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The EP placement method"), EvaluationPositionsPlaceType);
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
         currentEvaluationPointsGenerator.populateGUI_Initialization();
     }
@@ -254,6 +316,11 @@ public class LumibricksScript : MonoBehaviour
 
     public void ResetLightProbes()
     {
+        if (generatorListLightProbes == null)
+        {
+            return;
+        }
+
         if (!UpdateSceneVolume(ref this.sceneVolumeLP, ref this.sceneVolumeLPprev, ref this.sceneVolumeLPBounds))
         {
             return;
@@ -288,8 +355,12 @@ public class LumibricksScript : MonoBehaviour
 
     public void ResetEvaluationPoints()
     {
-        if (!
-            UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds))
+        if (generatorListEvaluationPoints == null)
+        {
+            return;
+        }
+
+        if (!UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds))
         {
             return;
         }

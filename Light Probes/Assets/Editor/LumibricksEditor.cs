@@ -40,18 +40,20 @@ public class LightProbesEditor : Editor
 
         // generate GUI Elements
         var  clickedElements                 = populateInspectorGUI();
-        bool clickedResetLightProbes         = clickedElements.Item1;
-        bool clickedPlaceLightProbes         = clickedElements.Item2;
-        bool clickedResetEvaluationPoints    = clickedElements.Item3;
-        bool clickedPlaceEvaluationPoints    = clickedElements.Item4;
-        bool clickedMapEvaluationPointsToLightProbes  = clickedElements.Item5;
-        bool clickedBakeLightProbes          = clickedElements.Item6;
-        bool clickedSimplifyLightProbes      = clickedElements.Item7;
-        bool clickedSimplifyEvaluationPoints = clickedElements.Item8;
-        bool clickedEvaluateEvalautionPoints = clickedElements.Item9;
-        bool clickedDecimateLightProbes      = clickedElements.Item10;
+        bool clickedSuccess                  = clickedElements.Item1;
+        bool clickedResetLightProbes         = clickedElements.Item2;
+        bool clickedPlaceLightProbes         = clickedElements.Item3;
+        bool clickedResetEvaluationPoints    = clickedElements.Item4;
+        bool clickedPlaceEvaluationPoints    = clickedElements.Item5;
+        bool clickedMapEvaluationPointsToLightProbes  = clickedElements.Item6;
+        bool clickedBakeLightProbes          = clickedElements.Item7;
+        bool clickedSimplifyLightProbes      = clickedElements.Item8;
+        bool clickedSimplifyEvaluationPoints = clickedElements.Item9;
+        bool clickedEvaluateEvalautionPoints = clickedElements.Item10;
+        bool clickedDecimateLightProbes      = clickedElements.Item11;
 
-        if (!clickedResetLightProbes         && !clickedPlaceLightProbes      &&
+        if (!clickedSuccess                  &&
+            !clickedResetLightProbes         && !clickedPlaceLightProbes      &&
             !clickedResetEvaluationPoints    && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
             !clickedBakeLightProbes          && !clickedSimplifyLightProbes   && 
             !clickedSimplifyEvaluationPoints && !clickedEvaluateEvalautionPoints && !clickedDecimateLightProbes)
@@ -332,10 +334,29 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) populateInspectorGUI()
+    (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) populateInspectorGUI()
     {
+        bool clickedSuccess = false;
+        bool clickedResetLightProbes = false;
+        bool clickedPlaceLightProbes = false;
+        bool clickedResetEvaluationPoints = false;
+        bool clickedPlaceEvaluationPoints = false;
+        bool clickedMapEvaluationPointsToProbes = false;
+        bool clickedBakeLightProbes = false;
+        bool clickedRemoveUnlitLightProbes = false;
+        bool clickedRemoveUnlitEvaluationPoints = false;
+        bool clickedEvaluateEvaluationPoints = false;
+        bool clickedDecimateLightProbes = false;
+
         LumibricksScript script = (LumibricksScript)target;
-        script.Init();
+        if (!script.Init())
+        {
+            return (clickedSuccess, clickedResetLightProbes     , clickedPlaceLightProbes,
+                clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
+                clickedBakeLightProbes      , 
+                clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
+                clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
+        }
 
         EditorGUILayout.LabelField("Light Probes Cut Algorithm", EditorStylesHeader);
         EditorGUILayout.Space();
@@ -347,8 +368,8 @@ public class LightProbesEditor : Editor
 
         GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
         GUILayout.BeginHorizontal();
-        bool clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
-        bool clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
+        clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
+        clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
         GUILayout.EndHorizontal();
         EditorGUILayout.Space();
 
@@ -359,18 +380,18 @@ public class LightProbesEditor : Editor
         // evaluationPointGeometry = EditorGUILayout.ObjectField("Geometry Representation", evaluationPointGeometry, typeof(GameObject), true) as GameObject;
 
         GUILayout.BeginHorizontal();
-        bool clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
-        bool clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
+        clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
+        clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
         GUILayout.EndHorizontal();
        
         EditorGUILayout.Space();
-        bool clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP" , "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
+        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP" , "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("2. Simplification", EditorStylesMainAction);
 
         GUILayout.BeginHorizontal();
-        bool clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes", "Bake light probes"), defaultOption);
+        clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes", "Bake light probes"), defaultOption);
         GUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
@@ -379,7 +400,7 @@ public class LightProbesEditor : Editor
 
         //EditorGUILayout.LabelField("2.1.1. Light Probes", EditorStyles.boldLabel);
         GUILayout.BeginHorizontal();
-        bool clickedRemoveUnlitLightProbes = GUILayout.Button(new GUIContent("Remove Unlit Light Probes", "Remove unlit light probes"), defaultOption);
+        clickedRemoveUnlitLightProbes = GUILayout.Button(new GUIContent("Remove Unlit Light Probes", "Remove unlit light probes"), defaultOption);
         GUILayout.EndHorizontal();
         script.populateGUI_LightProbesSimplified();
 
@@ -387,7 +408,7 @@ public class LightProbesEditor : Editor
         //EditorGUILayout.LabelField("2.1.2. Evaluation Points", EditorStyles.boldLabel);
 
         GUILayout.BeginHorizontal();
-        bool clickedRemoveUnlitEvaluationPoints = GUILayout.Button(new GUIContent("Remove Unlit Evaluation Points", "Remove unlit evaluation points"), defaultOption);
+        clickedRemoveUnlitEvaluationPoints = GUILayout.Button(new GUIContent("Remove Unlit Evaluation Points", "Remove unlit evaluation points"), defaultOption);
         GUILayout.EndHorizontal();
         script.populateGUI_EvaluationPointsSimplified();
 
@@ -408,7 +429,7 @@ public class LightProbesEditor : Editor
             EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(script.evaluationFixedCount[(int)script.EvaluationType].ToString()));
 
         GUILayout.BeginHorizontal();
-        bool clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
+        clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
         GUILayout.EndHorizontal();
         script.populateGUI_LightProbesEvaluated();
 
@@ -419,7 +440,7 @@ public class LightProbesEditor : Editor
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
+        clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
         script.populateGUI_LightProbesDecimatedEvaluated();
@@ -432,7 +453,8 @@ public class LightProbesEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.Space();
 
-        return (clickedResetLightProbes     , clickedPlaceLightProbes,
+        clickedSuccess = true;
+        return (clickedSuccess, clickedResetLightProbes     , clickedPlaceLightProbes,
                 clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
                 clickedBakeLightProbes      , 
                 clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
