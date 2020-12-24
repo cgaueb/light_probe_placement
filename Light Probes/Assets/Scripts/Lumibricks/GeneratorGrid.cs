@@ -33,7 +33,7 @@ public class GeneratorGrid : GeneratorInterface
 
     public override void Reset()
     {
-        probesDims = new Vector3Int(4, 4, 4);
+        probesDims = new Vector3Int(2, 2, 2);
         probesDims = Vector3Int.Max(new Vector3Int(1, 1, 1), probesDims);
         probeCount = GetTotalNumProbes;
         probeCountSimplified = 0;

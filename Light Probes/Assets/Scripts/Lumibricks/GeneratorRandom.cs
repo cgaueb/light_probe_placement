@@ -26,7 +26,7 @@ public class GeneratorRandom : GeneratorInterface
 
     public override void Reset()
     {
-        probeCount = 1024;
+        probeCount = 32;
         probeCountSimplified = 0;
     }
 
