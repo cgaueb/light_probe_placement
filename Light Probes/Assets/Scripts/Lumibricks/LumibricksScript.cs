@@ -715,6 +715,20 @@ public class LumibricksScript : MonoBehaviour
 
     void EvaluateVisibilityPoints(Vector3[] posIn, out bool[] unlitPoints)
     {
+    Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p) {
+        Matrix4x4 mat = Matrix4x4.identity;
+        mat.SetColumn(0, v[0] - v[3]);
+        mat.SetColumn(1, v[1] - v[3]);
+        mat.SetColumn(2, v[2] - v[3]);
+        Vector4 v_new = p - v[3];
+        Vector4 weights = mat.inverse * v_new;
+        weights.w = 1 - weights.x - weights.y - weights.z;
+        return weights;
+    }
+    bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p) {
+        Vector4 weights = GetTetrahedronWeights(v, p);
+        return weights.x > 0 && weights.y > 0 && weights.z > 0 && weights.w > 0;
+    }
         // Bit shift the index of the layer (8) to get a bit mask
         int layerMask = 1 << 8; // Corresponds to "Environment"
 
