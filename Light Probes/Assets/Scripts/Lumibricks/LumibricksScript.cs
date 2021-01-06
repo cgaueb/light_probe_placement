@@ -414,7 +414,12 @@ public class LumibricksScript : MonoBehaviour
 
     public void EvaluateEvaluationPoints()
     {
-        EvaluatePoints(evaluationPositions.ToArray());
+        EvaluatePoints(LightmapSettings.lightProbes.bakedProbes, evaluationPositions.ToArray());
+    }
+
+    public void EvaluateEvaluationPoints(SphericalHarmonicsL2[] bakedProbes)
+    {
+        EvaluatePoints(bakedProbes, evaluationPositions.ToArray());
     }
     #endregion
 
@@ -628,8 +633,9 @@ public class LumibricksScript : MonoBehaviour
         float    decimatedCostMin = float.MaxValue;
         float [] decimatedCost    = new float[lightProbes.count];
 
-        Vector3       evaluationRGB;
-        List<Vector3> probePositionsDecimated;
+        Vector3                    evaluationRGB;
+        List<Vector3>              probePositionsDecimated;
+        List<SphericalHarmonicsL2> bakedLightProbesDecimated;
 
         decimatedPoints = new bool[lightProbes.count];
         for (int i = 0; i < lightProbes.count; i++)
@@ -638,25 +644,27 @@ public class LumibricksScript : MonoBehaviour
             {
                 probePositionsDecimated = new List<Vector3>(lightProbes.positions);
                 probePositionsDecimated.RemoveAt(i);
+
+                bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
+                bakedLightProbesDecimated.RemoveAt(i);
             }
 
-            Debug.Log("DECIMATE - LP" + i + "-> Before " + lightProbes.count);
-            Debug.Log("DECIMATE - LP" + i + "-> After "  + probePositionsDecimated.Count);
+            //Debug.Log("DECIMATE - LP" + i + "-> Before " + lightProbes.count);
+            //Debug.Log("DECIMATE - LP" + i + "-> After "  + probePositionsDecimated.Count);
 
             // 2. Tetrahedralize New Light Probe Set
-            {
+            //{
                 // Set Positions to LightProbeGroup
-                LightProbeGroup.probePositions = probePositionsDecimated.ToArray();
+                //LightProbeGroup.probePositions = probePositionsDecimated.ToArray();
                 // Tetrahedralize - NOT WORKING - REQUIRES BAKE PROCESS
-                LightProbes.Tetrahedralize();
-            }
+                //LightProbes.Tetrahedralize();
+            //}
 
             // 3. Map Evaluation Points to New Light Probe Set 
-            // Not Needed
-            // MappingEvaluationPoints(probePositionsDecimated.ToArray());
+            MappingEvaluationPoints(probePositionsDecimated.ToArray());
 
             // 4. Evaluate
-            EvaluateEvaluationPoints();
+            EvaluateEvaluationPoints(bakedLightProbesDecimated.ToArray());
 
             // 5. Compute Cost
             {
@@ -668,12 +676,13 @@ public class LumibricksScript : MonoBehaviour
                 decimatedCost[i] = Mathf.Abs(evaluationRGB.magnitude-evaluationTotal);
             }
 
-            Debug.Log("DECIMATE - LP" + i + "-> Eval " + evaluationRGB.magnitude);
-            Debug.Log("DECIMATE - LP" + i + "-> Cost " + decimatedCost[i]);
-
             // 6. Find light probe with the minimum error
             if(decimatedCost[i] < decimatedCostMin)
             {
+
+                //Debug.Log("DECIMATE - LP" + i + "-> Eval " + evaluationRGB.magnitude);
+                //Debug.Log("DECIMATE - LP" + i + "-> Cost " + decimatedCost[i]);
+
                 decimatedIndex           = i;
                 decimatedCostMin         = decimatedCost[i];
                 evaluationTotalDecimated = evaluationRGB.magnitude;
@@ -687,7 +696,6 @@ public class LumibricksScript : MonoBehaviour
             decimatedPoints[decimatedIndex] = true;
         }
     }
-
     void GetTetrahedronPositions(int j, out Vector3[] tetrahedronPositions) 
     {
         tetrahedronPositions    = new Vector3[4];
@@ -713,22 +721,28 @@ public class LumibricksScript : MonoBehaviour
                 PointPlaneSameSide(v[3], v[0], v[1], v[2], p);
     }
 
-    void EvaluateVisibilityPoints(Vector3[] posIn, out bool[] unlitPoints)
+    Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p)
     {
-    Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p) {
         Matrix4x4 mat = Matrix4x4.identity;
         mat.SetColumn(0, v[0] - v[3]);
         mat.SetColumn(1, v[1] - v[3]);
         mat.SetColumn(2, v[2] - v[3]);
+    
         Vector4 v_new = p - v[3];
         Vector4 weights = mat.inverse * v_new;
         weights.w = 1 - weights.x - weights.y - weights.z;
+    
         return weights;
     }
-    bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p) {
+
+     bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p)
+    {
         Vector4 weights = GetTetrahedronWeights(v, p);
         return weights.x > 0 && weights.y > 0 && weights.z > 0 && weights.w > 0;
     }
+
+    void EvaluateVisibilityPoints(Vector3[] posIn, out bool[] unlitPoints)
+    {
         // Bit shift the index of the layer (8) to get a bit mask
         int layerMask = 1 << 8; // Corresponds to "Environment"
 
@@ -765,10 +779,28 @@ public class LumibricksScript : MonoBehaviour
                     break;
                 }
             }
-
         }
     }
-    void EvaluatePoints(Vector3[] positions)
+
+    void GetInterpolatedLightProbe(Vector3 evalPosition, int evalTetrahedron, SphericalHarmonicsL2[] bakedprobes, ref SphericalHarmonicsL2 sh2)
+    {
+        // GetTetrahedronSHs
+        SphericalHarmonicsL2[] tetrahedronSH2 = new SphericalHarmonicsL2[4];
+        tetrahedronSH2[0] = bakedprobes[tetrahedralizeIndices[evalTetrahedron*4 + 0]];
+        tetrahedronSH2[1] = bakedprobes[tetrahedralizeIndices[evalTetrahedron*4 + 1]];
+        tetrahedronSH2[2] = bakedprobes[tetrahedralizeIndices[evalTetrahedron*4 + 2]];
+        tetrahedronSH2[3] = bakedprobes[tetrahedralizeIndices[evalTetrahedron*4 + 3]];
+
+        // Get Barycentric Weights
+        Vector3[] tetrahedronPositions;
+        GetTetrahedronPositions(evalTetrahedron, out tetrahedronPositions);
+        Vector4 weights = GetTetrahedronWeights(tetrahedronPositions, evalPosition);
+
+        // Interpolate
+        sh2 = weights.x*tetrahedronSH2[0] + weights.y*tetrahedronSH2[1] + weights.z*tetrahedronSH2[2] + weights.w*tetrahedronSH2[3];
+    }
+
+    void EvaluatePoints(SphericalHarmonicsL2[] bakedprobes, Vector3[] evalPositions)
     {
         int         directionsCount;
         Vector3[]   directions;
@@ -787,11 +819,16 @@ public class LumibricksScript : MonoBehaviour
         Color[]     evaluationResultsPerDir   = new Color[directionsCount];
 
         int j = 0;
-        evaluationResults = new Vector3[positions.Length];
-        foreach(Vector3 pos in positions)
+        evaluationResults = new Vector3[evalPositions.Length];
+        foreach(Vector3 pos in evalPositions)
         {
-            SphericalHarmonicsL2 sh2;
-            LightProbes.GetInterpolatedProbe(pos, null, out sh2);
+            SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
+            if(evaluationTetrahedron[j] == -1)
+                sh2.Clear();
+            else
+                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+            //LightProbes.GetInterpolatedProbe(pos, null, out sh2);
+
             sh2.Evaluate(directions, evaluationResultsPerDir);
 
             Vector3 uniformSampledEvaluation = new Vector3(0,0,0);
@@ -806,6 +843,7 @@ public class LumibricksScript : MonoBehaviour
             evaluationResults[j++] = uniformSampledEvaluation;
         }
     }
+
     void MappingPointsTetrahedrize(Vector3[] probePositions, ref List<Vector3> evalPositions)
     {
         Lightmapping.Tetrahedralize(probePositions, out tetrahedralizeIndices, out tetrahedralizePositions);
