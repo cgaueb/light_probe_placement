@@ -5,59 +5,56 @@ using System.Diagnostics;
 [CustomEditor(typeof(LumibricksScript))]
 public class LightProbesEditor : Editor
 {
-#region Private Variables
+    #region Private Variables
     Stopwatch stopwatch = null;
-    GUIStyle  EditorStylesHeader;
-    GUIStyle  EditorStylesMainAction;
-    GUIStyle  EditorStylesSubAction;
-#endregion
+    GUIStyle EditorStylesHeader;
+    GUIStyle EditorStylesMainAction;
+    GUIStyle EditorStylesSubAction;
+    #endregion
 
-#region Public Override Functions
-    public override void OnInspectorGUI()
-    {
+    #region Public Override Functions
+    public override void OnInspectorGUI() {
         LumibricksScript script = (LumibricksScript)target;
 
         float scale = 0.9f;
-        Color colorHeader     = new Color(1.0f, 0.65f, 0.0f);
+        Color colorHeader = new Color(1.0f, 0.65f, 0.0f);
         Color colorMainAction = new Color(1.0f, 0.65f, 0.0f);
-        Color colorSubAction  = new Color(0.95f, 0.95f, 0.0f);
+        Color colorSubAction = new Color(0.95f, 0.95f, 0.0f);
 
-        EditorStylesHeader                      = new GUIStyle(EditorStyles.boldLabel);
-        EditorStylesHeader.normal.textColor     = new Color(colorHeader.r * scale, colorHeader.g * scale, colorHeader.b * scale);
-        EditorStylesMainAction                  = new GUIStyle(EditorStyles.boldLabel);
+        EditorStylesHeader = new GUIStyle(EditorStyles.boldLabel);
+        EditorStylesHeader.normal.textColor = new Color(colorHeader.r * scale, colorHeader.g * scale, colorHeader.b * scale);
+        EditorStylesMainAction = new GUIStyle(EditorStyles.boldLabel);
         EditorStylesMainAction.normal.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
-        EditorStylesSubAction                   = new GUIStyle(EditorStyles.boldLabel);
-        EditorStylesSubAction.normal.textColor  = new Color(colorSubAction.r * scale, colorSubAction.g * scale, colorSubAction.b * scale);
+        EditorStylesSubAction = new GUIStyle(EditorStyles.boldLabel);
+        EditorStylesSubAction.normal.textColor = new Color(colorSubAction.r * scale, colorSubAction.g * scale, colorSubAction.b * scale);
 
         // Set LightProbeGroup
         var component = script.GetComponent<LightProbeGroup>();
-        if (component == null)
-        {
+        if (component == null) {
             UnityEngine.Debug.LogWarning("Not a LightProbeGroup component");
             return;
         }
         script.LightProbeGroup = component;
 
         // generate GUI Elements
-        var  clickedElements                 = populateInspectorGUI();
-        bool clickedSuccess                  = clickedElements.Item1;
-        bool clickedResetLightProbes         = clickedElements.Item2;
-        bool clickedPlaceLightProbes         = clickedElements.Item3;
-        bool clickedResetEvaluationPoints    = clickedElements.Item4;
-        bool clickedPlaceEvaluationPoints    = clickedElements.Item5;
-        bool clickedMapEvaluationPointsToLightProbes  = clickedElements.Item6;
-        bool clickedBakeLightProbes          = clickedElements.Item7;
-        bool clickedSimplifyLightProbes      = clickedElements.Item8;
+        var clickedElements = populateInspectorGUI();
+        bool clickedSuccess = clickedElements.Item1;
+        bool clickedResetLightProbes = clickedElements.Item2;
+        bool clickedPlaceLightProbes = clickedElements.Item3;
+        bool clickedResetEvaluationPoints = clickedElements.Item4;
+        bool clickedPlaceEvaluationPoints = clickedElements.Item5;
+        bool clickedMapEvaluationPointsToLightProbes = clickedElements.Item6;
+        bool clickedBakeLightProbes = clickedElements.Item7;
+        bool clickedSimplifyLightProbes = clickedElements.Item8;
         bool clickedSimplifyEvaluationPoints = clickedElements.Item9;
         bool clickedEvaluateEvalautionPoints = clickedElements.Item10;
-        bool clickedDecimateLightProbes      = clickedElements.Item11;
+        bool clickedDecimateLightProbes = clickedElements.Item11;
 
-        if (!clickedSuccess                  &&
-            !clickedResetLightProbes         && !clickedPlaceLightProbes      &&
-            !clickedResetEvaluationPoints    && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
-            !clickedBakeLightProbes          && !clickedSimplifyLightProbes   && 
-            !clickedSimplifyEvaluationPoints && !clickedEvaluateEvalautionPoints && !clickedDecimateLightProbes)
-        {
+        if (!clickedSuccess &&
+            !clickedResetLightProbes && !clickedPlaceLightProbes &&
+            !clickedResetEvaluationPoints && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
+            !clickedBakeLightProbes && !clickedSimplifyLightProbes &&
+            !clickedSimplifyEvaluationPoints && !clickedEvaluateEvalautionPoints && !clickedDecimateLightProbes) {
             return;
         }
 
@@ -69,8 +66,7 @@ public class LightProbesEditor : Editor
         }
 
         // Start Process - Place Light Probes
-        if (clickedPlaceLightProbes)
-        {
+        if (clickedPlaceLightProbes) {
             float placems = PlaceLightProbes();
             UnityEngine.Debug.Log("Done (PlaceLightProbes: " + placems / 1000.0 + "s)");
             FinishProcess();
@@ -97,72 +93,62 @@ public class LightProbesEditor : Editor
         }
 
         // Start Process - Bake 
-        if (clickedBakeLightProbes)
-        {
-            if (!Lightmapping.bakedGI)
-            {
+        if (clickedBakeLightProbes) {
+            if (!Lightmapping.bakedGI) {
                 UnityEngine.Debug.LogWarning("Baked GI option must be enabled to perform optimization");
                 FinishProcess();
                 return;
             }
 
-            float bakeLPms        = BakeLightProbes();
+            float bakeLPms = BakeLightProbes();
             UnityEngine.Debug.Log("Done  (Bake: " + bakeLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Light Probes
-        if (clickedSimplifyLightProbes)
-        {
+        if (clickedSimplifyLightProbes) {
             float removeUnlitLPms = RemoveUnlitLightProbes();
             UnityEngine.Debug.Log("Done  (Remove Unlit LP: " + removeUnlitLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Evaluation Points
-        if (clickedSimplifyEvaluationPoints)
-        {
+        if (clickedSimplifyEvaluationPoints) {
             float removeUnlitEPms = RemoveUnlitEvaluationPoints();
             UnityEngine.Debug.Log("Done  (Remove Unlit EP: " + removeUnlitEPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Evaluate
-        if (clickedEvaluateEvalautionPoints)
-        {
+        if (clickedEvaluateEvalautionPoints) {
             float evaluatems = EvaluateEvaluationPoints();
             UnityEngine.Debug.Log("Done  (Evaluate EP: " + evaluatems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Decimate Light Probes
-        if (clickedDecimateLightProbes)
-        {
+        if (clickedDecimateLightProbes) {
             float decimatems = DecimateLightProbes();
             UnityEngine.Debug.Log("Done  (Evaluate EP: " + decimatems / 1000.0 + "s)");
             FinishProcess();
         }
     }
-#endregion
+    #endregion
 
-#region Private Functions
-    void OnInspectorUpdate()
-    {
+    #region Private Functions
+    void OnInspectorUpdate() {
         // Call Repaint on OnInspectorUpdate as it repaints the windows less times as if it was OnGUI/Update
         Repaint();
     }
-    public void Awake()
-    {
+    public void Awake() {
         UnityEngine.Debug.Log("Awake");
     }
 
-    public void OnEnable()
-    {
+    public void OnEnable() {
         UnityEngine.Debug.Log("OnEnable");
     }
 
-    public void OnDisable()
-    {
+    public void OnDisable() {
         UnityEngine.Debug.Log("OnDisable");
     }
 
@@ -173,14 +159,12 @@ public class LightProbesEditor : Editor
         //script.Destroy();
     }
 
-    void FinishProcess()
-    {
+    void FinishProcess() {
         EditorUtility.ClearProgressBar();
         GUIUtility.ExitGUI();
     }
 
-    float PlaceLightProbes()
-    {
+    float PlaceLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
 
         // Start Process - Generate
@@ -195,8 +179,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float ResetLightProbes()
-    {
+    float ResetLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
 
         // Start Process - Generate
@@ -211,8 +194,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float PlaceEvaluationPoints()
-    {
+    float PlaceEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         // Start Process - Generate
@@ -227,8 +209,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float ResetEvaluationPoints()
-    {
+    float ResetEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         // Start Process - Generate
@@ -243,8 +224,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float MapEvaluationPointsToLightProbes()
-    {
+    float MapEvaluationPointsToLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
 
         // Start Process - Generate
@@ -259,8 +239,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float BakeLightProbes()
-    {
+    float BakeLightProbes() {
         stopwatch = Stopwatch.StartNew();
         EditorUtility.DisplayProgressBar("Clear Caches", "Clean", 0f);
         Lightmapping.ClearDiskCache();
@@ -275,8 +254,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float RemoveUnlitLightProbes()
-    {
+    float RemoveUnlitLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
@@ -290,8 +268,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float RemoveUnlitEvaluationPoints()
-    {
+    float RemoveUnlitEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
@@ -305,8 +282,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float EvaluateEvaluationPoints()
-    {
+    float EvaluateEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
@@ -319,10 +295,9 @@ public class LightProbesEditor : Editor
 
         return stopwatch.ElapsedMilliseconds;
     }
-    float DecimateLightProbes()
-    {
+    float DecimateLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
-        
+
         stopwatch = Stopwatch.StartNew();
         {
             EditorUtility.DisplayProgressBar("Decimate light probes", "Decimate", 0f);
@@ -334,8 +309,7 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) populateInspectorGUI()
-    {
+    (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) populateInspectorGUI() {
         bool clickedSuccess = false;
         bool clickedResetLightProbes = false;
         bool clickedPlaceLightProbes = false;
@@ -349,24 +323,30 @@ public class LightProbesEditor : Editor
         bool clickedDecimateLightProbes = false;
 
         LumibricksScript script = (LumibricksScript)target;
-        if (!script.Init())
-        {
-            return (clickedSuccess, clickedResetLightProbes     , clickedPlaceLightProbes,
+        if (!script.Init()) {
+            return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
                 clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
-                clickedBakeLightProbes      , 
+                clickedBakeLightProbes,
                 clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
                 clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
         }
+        GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
 
         EditorGUILayout.LabelField("Light Probes Cut Algorithm", EditorStylesHeader);
         EditorGUILayout.Space();
+
+        bool clicked = GUILayout.Button(new GUIContent("Set Volumes", ""), defaultOption);
+        if (clicked) {
+            script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
+            script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
+        }
+
         EditorGUILayout.LabelField("1. Initialization", EditorStylesMainAction);
         EditorGUILayout.Space();
 
         EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
         script.populateGUI_LightProbes();
 
-        GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
         GUILayout.BeginHorizontal();
         clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
         clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
@@ -383,9 +363,9 @@ public class LightProbesEditor : Editor
         clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
         clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
         GUILayout.EndHorizontal();
-       
+
         EditorGUILayout.Space();
-        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP" , "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
+        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("2. Simplification", EditorStylesMainAction);
@@ -416,35 +396,12 @@ public class LightProbesEditor : Editor
         EditorGUILayout.LabelField("2.2. Graph Reduction", EditorStylesSubAction);
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("2.2.1. Evaluation", EditorStyles.boldLabel);
-
-        script.EvaluationType = (LumibricksScript.LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), script.EvaluationType);
-        if (script.EvaluationType == LumibricksScript.LightProbesEvaluationType.Random)
-        {
-            int prevCount = script.evaluationRandomSamplingCount;
-            script.evaluationRandomSamplingCount = EditorGUILayout.IntSlider(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), script.evaluationRandomSamplingCount, 25, 500);
-            if (prevCount != script.evaluationRandomSamplingCount)
-                script.GenerateUniformSphereSampling();
-        }
-        else
-            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(script.evaluationFixedCount[(int)script.EvaluationType].ToString()));
-
-        GUILayout.BeginHorizontal();
-        clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
-        GUILayout.EndHorizontal();
-        script.populateGUI_LightProbesEvaluated();
+        clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("2.2.2. Decimation", EditorStyles.boldLabel);
-        script.terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum set:"  , "The minimum desired number of light probes")     , script.terminationMinLightProbes , 1, script.terminationMaxLightProbes);
-        script.terminationEvaluationError = EditorGUILayout.Slider   (new GUIContent("Minimum error:", "The minimum desired evaluation percentage error"), script.terminationEvaluationError, 0.0f, 100.0f);
-
-        GUILayout.BeginHorizontal();
-        GUILayout.FlexibleSpace();
-        clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
-        GUILayout.FlexibleSpace();
-        GUILayout.EndHorizontal();
-        script.populateGUI_LightProbesDecimatedEvaluated();
-        //script.populateGUI_LightProbesDecimated();
+        clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated();
+        
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("3. Optimization", EditorStylesMainAction);
@@ -454,11 +411,11 @@ public class LightProbesEditor : Editor
         EditorGUILayout.Space();
 
         clickedSuccess = true;
-        return (clickedSuccess, clickedResetLightProbes     , clickedPlaceLightProbes,
+        return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
                 clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
-                clickedBakeLightProbes      , 
+                clickedBakeLightProbes,
                 clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
                 clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
     }
-#endregion
+    #endregion
 }
