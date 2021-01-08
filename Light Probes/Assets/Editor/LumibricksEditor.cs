@@ -107,15 +107,15 @@ public class LightProbesEditor : Editor
 
         // Start Process - Simplify Light Probes
         if (clickedSimplifyLightProbes) {
-            float removeUnlitLPms = RemoveUnlitLightProbes();
-            UnityEngine.Debug.Log("Done  (Remove Unlit LP: " + removeUnlitLPms / 1000.0 + "s)");
+            float removeInvalidLPms = RemoveInvalidLightProbes();
+            UnityEngine.Debug.Log("Done  (Remove Invalid LP: " + removeInvalidLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Evaluation Points
         if (clickedSimplifyEvaluationPoints) {
-            float removeUnlitEPms = RemoveUnlitEvaluationPoints();
-            UnityEngine.Debug.Log("Done  (Remove Unlit EP: " + removeUnlitEPms / 1000.0 + "s)");
+            float removeInvalidEPms = RemoveInvalidEvaluationPoints();
+            UnityEngine.Debug.Log("Done  (Remove Invalid EP: " + removeInvalidEPms / 1000.0 + "s)");
             FinishProcess();
         }
 
@@ -259,28 +259,28 @@ public class LightProbesEditor : Editor
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float RemoveUnlitLightProbes() {
+    float RemoveInvalidLightProbes() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Remove unlit Light Probes", "Remove", 0f);
-            script.RemoveUnlitLightProbes();
-            EditorUtility.DisplayProgressBar("Remove unlit Light Probes", "Remove", 1f);
+            EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 0f);
+            script.RemoveInvalidLightProbes();
+            EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 1f);
         }
         stopwatch.Stop();
 
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float RemoveUnlitEvaluationPoints() {
+    float RemoveInvalidEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Remove unlit Evaluation Points", "Remove", 0f);
-            script.RemoveUnlitEvaluationPoints();
-            EditorUtility.DisplayProgressBar("Remove unlit Evaluation Points", "Remove", 1f);
+            EditorUtility.DisplayProgressBar("Remove invalid Evaluation Points", "Remove", 0f);
+            script.RemoveInvalidEvaluationPoints();
+            EditorUtility.DisplayProgressBar("Remove invalid Evaluation Points", "Remove", 1f);
         }
         stopwatch.Stop();
 
@@ -322,8 +322,8 @@ public class LightProbesEditor : Editor
         bool clickedPlaceEvaluationPoints = false;
         bool clickedMapEvaluationPointsToProbes = false;
         bool clickedBakeLightProbes = false;
-        bool clickedRemoveUnlitLightProbes = false;
-        bool clickedRemoveUnlitEvaluationPoints = false;
+        bool clickedRemoveInvalidLightProbes = false;
+        bool clickedRemoveInvalidEvaluationPoints = false;
         bool clickedEvaluateEvaluationPoints = false;
         bool clickedDecimateLightProbes = false;
 
@@ -332,7 +332,7 @@ public class LightProbesEditor : Editor
             return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
                 clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
                 clickedBakeLightProbes,
-                clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
+                clickedRemoveInvalidLightProbes, clickedRemoveInvalidEvaluationPoints,
                 clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
         }
         GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
@@ -346,7 +346,7 @@ public class LightProbesEditor : Editor
             script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
         }
 
-        EditorGUILayout.LabelField("1. Initialization", EditorStylesMainAction);
+        EditorGUILayout.LabelField("1. Placement", EditorStylesMainAction);
         EditorGUILayout.Space();
 
         EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
@@ -370,9 +370,6 @@ public class LightProbesEditor : Editor
         GUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
-        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
-
-        EditorGUILayout.Space();
         EditorGUILayout.LabelField("2. Simplification", EditorStylesMainAction);
 
         GUILayout.BeginHorizontal();
@@ -380,20 +377,23 @@ public class LightProbesEditor : Editor
         GUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2.1. Remove Unlit Objects", EditorStylesSubAction);
+        EditorGUILayout.LabelField("2.1. Remove Invalid Objects", EditorStylesSubAction);
         EditorGUILayout.Space();
 
         //EditorGUILayout.LabelField("2.1.1. Light Probes", EditorStyles.boldLabel);
         GUILayout.BeginHorizontal();
-        clickedRemoveUnlitLightProbes = GUILayout.Button(new GUIContent("Remove Unlit Light Probes", "Remove unlit light probes"), defaultOption);
+        clickedRemoveInvalidLightProbes = GUILayout.Button(new GUIContent("Remove Invalid Light Probes", "Remove invalid light probes"), defaultOption);
         GUILayout.EndHorizontal();
         script.populateGUI_LightProbesSimplified();
 
         EditorGUILayout.Space();
         //EditorGUILayout.LabelField("2.1.2. Evaluation Points", EditorStyles.boldLabel);
 
+        EditorGUILayout.Space();
+        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
+
         GUILayout.BeginHorizontal();
-        clickedRemoveUnlitEvaluationPoints = GUILayout.Button(new GUIContent("Remove Unlit Evaluation Points", "Remove unlit evaluation points"), defaultOption);
+        clickedRemoveInvalidEvaluationPoints = GUILayout.Button(new GUIContent("Remove Invalid Evaluation Points", "Remove invalid evaluation points"), defaultOption);
         GUILayout.EndHorizontal();
         script.populateGUI_EvaluationPointsSimplified();
 
@@ -418,7 +418,7 @@ public class LightProbesEditor : Editor
         return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
                 clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
                 clickedBakeLightProbes,
-                clickedRemoveUnlitLightProbes, clickedRemoveUnlitEvaluationPoints,
+                clickedRemoveInvalidLightProbes, clickedRemoveInvalidEvaluationPoints,
                 clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
     }
     #endregion

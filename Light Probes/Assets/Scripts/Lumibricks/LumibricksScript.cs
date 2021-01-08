@@ -211,11 +211,12 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void PlaceLightProbes() {
-        if (!UpdateSceneVolume(ref this.sceneVolumeLP, ref this.sceneVolumeLPprev, ref this.sceneVolumeLPBounds)) {
+    public void PlaceLightProbes(bool update_volume = true) {
+        if (update_volume && !UpdateSceneVolume(ref this.sceneVolumeLP, ref this.sceneVolumeLPprev, ref this.sceneVolumeLPBounds)) {
             return;
         }
         GenerateLightProbes();
+
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
     }
 
@@ -231,11 +232,11 @@ public class LumibricksScript : MonoBehaviour
         // Get Generator
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
         currentLightProbesGenerator.Reset();
-        GenerateLightProbes();
-        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
+        // Place the Light Probes
+        PlaceLightProbes(false);
     }
-    public void PlaceEvaluationPoints() {
-        if (!UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds)) {
+    public void PlaceEvaluationPoints(bool update_volume = true) {
+        if (update_volume && !UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds)) {
             return;
         }
         GenerateEvaluationPoints();
@@ -254,35 +255,37 @@ public class LumibricksScript : MonoBehaviour
         // Clear Positions
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
         currentEvaluationPointsGenerator.Reset();
-        GenerateEvaluationPoints();
-        m_evaluator.ResetEvaluationData();
+        // Place the Evaluation Points
+        PlaceEvaluationPoints(false);
     }
 
     public void MapEvaluationPointsToLightProbes() {
-        int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions.ToArray(), currentEvaluationPointsGenerator.Positions.ToArray());
+        int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
         Debug.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + "of EPs: " + 
             mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
     }
 
     public void Bake() {
-        Lightmapping.Bake();
-        LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
+        Lightmapping.BakeAsync();
+        //LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
     }
 
-    public void RemoveUnlitLightProbes() {
+    public void RemoveInvalidLightProbes() {
+        LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
 
         // Remove Dark Probes to discard invisible or ones that are hidden inside geometry
-        bool[] unlitPoints;
+        List<bool> invalidPoints;
         currentLightProbesGenerator.TotalNumProbes = currentLightProbesGenerator.Positions.Count;
-        m_evaluator.EvaluateBakedLightProbes(LightProbesBakedProbes.ToArray(), out unlitPoints);
+        m_evaluator.EvaluateBakedLightProbes(LightProbesBakedProbes, out invalidPoints);
         
         int count = 0;
-        for (int i = unlitPoints.Length -1; i >= 0; --i) {
-            if (unlitPoints[i]) {
-                ++count;
-                currentLightProbesGenerator.Positions.RemoveAt(i);
-                LightProbesBakedProbes.RemoveAt(i);
+        for (int i = invalidPoints.Count - 1; i >= 0; --i) {
+            if (!invalidPoints[i]) {
+                continue;
             }
+            ++count;
+            currentLightProbesGenerator.Positions.RemoveAt(i);
+            LightProbesBakedProbes.RemoveAt(i);
         }
         Debug.Log("Removed " + count.ToString() + " light probes");
 
@@ -294,18 +297,35 @@ public class LumibricksScript : MonoBehaviour
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
     }
 
-    public void RemoveUnlitEvaluationPoints() {
+    public void RemoveInvalidEvaluationPoints() {
         currentEvaluationPointsGenerator.TotalNumProbes = currentEvaluationPointsGenerator.Positions.Count;
-        GetLitEvaluationPoints(currentEvaluationPointsGenerator.Positions.ToArray(), currentEvaluationPointsGenerator.Positions);
+
+        // Evaluation
+        List<bool> invalidPoints;
+        m_evaluator.EvaluateVisibilityPoints(currentEvaluationPointsGenerator.Positions, out invalidPoints);
+
+        int count = 0;
+        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
+        // Delete Nodes & Objects
+        for (int i = invalidPoints.Count - 1; i >= 0; --i) {
+            if (invalidPoints[i]) {
+                ++count;
+                Transform epTransform = evaluationObjectParent.transform.Find("Evaluation Point " + i.ToString());
+                DestroyImmediate(epTransform.gameObject);
+                currentEvaluationPointsGenerator.Positions.RemoveAt(i);
+                continue;
+            }
+        }
+        Debug.Log("Removed " + count.ToString() + " evaluation points");
         currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
     }
     public void EvaluateEvaluationPoints() {
-        m_evaluator.EvaluateReferencePoints(LightProbesBakedProbes.ToArray(), currentEvaluationPointsGenerator.Positions.ToArray());
+        m_evaluator.EvaluateReferencePoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
     }
     public void DecimateLightProbes() {
         
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
-        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions.ToArray(), currentLightProbesGenerator.Positions, LightProbesBakedProbes);
+        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
         Debug.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes");
 
@@ -317,13 +337,13 @@ public class LumibricksScript : MonoBehaviour
     #region Private Functions
 
     bool UpdateSceneVolume(ref GameObject current, ref GameObject prev, ref Bounds bounds) {
-        bool success = true;
+        bool no_error = true;
         //if (current != prev)
         {
-            success = ComputeSceneVolume(ref current, ref bounds);
+            no_error = ComputeSceneVolume(ref current, ref bounds);
             prev = current;
         }
-        return success;
+        return no_error;
     }
 
     bool ComputeSceneVolume(ref GameObject gameObject, ref Bounds bounds) {
@@ -424,29 +444,6 @@ public class LumibricksScript : MonoBehaviour
         obj.transform.parent = parenttobject.transform;
         obj.SetActive(true);
         obj.name = "Evaluation Point " + index.ToString();
-    }
-
-    void GetLitEvaluationPoints(Vector3[] posIn, List<Vector3> posOut) {
-        posOut.Clear();
-
-        // Evaluation
-        bool[] unlitPoints;
-        m_evaluator.EvaluateVisibilityPoints(posIn, out unlitPoints);
-
-        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
-
-        int count = 0;
-        // Delete Nodes & Objects
-        for (int i = 0; i < unlitPoints.Length; ++i) {
-            if (unlitPoints[i]) {
-                ++count;
-                Transform epTransform = evaluationObjectParent.transform.Find("Evaluation Point " + i.ToString());
-                DestroyImmediate(epTransform.gameObject);
-                continue;
-            }
-            posOut.Add(posIn[i]);
-        }
-        Debug.Log("Removed " + count.ToString() + " evaluation points");
     }
     
     #endregion
