@@ -47,14 +47,14 @@ public class LightProbesEditor : Editor
         bool clickedBakeLightProbes = clickedElements.Item7;
         bool clickedSimplifyLightProbes = clickedElements.Item8;
         bool clickedSimplifyEvaluationPoints = clickedElements.Item9;
-        bool clickedEvaluateEvalautionPoints = clickedElements.Item10;
+        bool clickedEvaluateEvaluationPoints = clickedElements.Item10;
         bool clickedDecimateLightProbes = clickedElements.Item11;
 
         if (!clickedSuccess &&
             !clickedResetLightProbes && !clickedPlaceLightProbes &&
             !clickedResetEvaluationPoints && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
             !clickedBakeLightProbes && !clickedSimplifyLightProbes &&
-            !clickedSimplifyEvaluationPoints && !clickedEvaluateEvalautionPoints && !clickedDecimateLightProbes) {
+            !clickedSimplifyEvaluationPoints && !clickedEvaluateEvaluationPoints && !clickedDecimateLightProbes) {
             return;
         }
 
@@ -120,7 +120,7 @@ public class LightProbesEditor : Editor
         }
 
         // Start Process - Evaluate
-        if (clickedEvaluateEvalautionPoints) {
+        if (clickedEvaluateEvaluationPoints) {
             float evaluatems = EvaluateEvaluationPoints();
             UnityEngine.Debug.Log("Done  (Evaluate EP: " + evaluatems / 1000.0 + "s)");
             FinishProcess();
@@ -401,7 +401,6 @@ public class LightProbesEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("2.2.2. Decimation", EditorStyles.boldLabel);
         clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated();
-        
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("3. Optimization", EditorStylesMainAction);
