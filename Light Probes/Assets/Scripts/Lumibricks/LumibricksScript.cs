@@ -46,7 +46,7 @@ public class LumibricksScript : MonoBehaviour
 
     #region Constructor Functions
     public LumibricksScript() {
-
+        Debug.Log("Lumi Script Constructor");
     }
     #endregion
 
@@ -73,6 +73,7 @@ public class LumibricksScript : MonoBehaviour
             }
             return true;
         }
+        Debug.Log("Init");
         EPMaterial = new Material(Shader.Find("Unlit/Color"));
         EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
 
