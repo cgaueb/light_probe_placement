@@ -71,14 +71,14 @@ class Evaluator {
 
     public float terminationEvaluationError = 0.0f;
 
-    public void Reset() {
-        ResetLightProbeData();
+    public void Reset(int probesCount) {
+        ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
     }
 
-    public void ResetLightProbeData() {
-        terminationMinLightProbes = 0;
-        terminationMaxLightProbes = 0;
+    public void ResetLightProbeData(int probesCount) {
+        terminationMinLightProbes = probesCount-1;
+        terminationMaxLightProbes = probesCount-1;
         ResetEvaluationData();
     }
     public void ResetEvaluationData() {
@@ -120,7 +120,7 @@ class Evaluator {
     public bool populateGUI_LightProbesDecimated() {
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
-        terminationMinLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum set (unused):", "The minimum desired number of light probes"), terminationMinLightProbes, 1, terminationMaxLightProbes);
+        terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum set:", "The minimum desired number of light probes"), terminationMinLightProbes, 4, terminationMaxLightProbes);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
 
         GUILayout.BeginHorizontal();
@@ -214,7 +214,7 @@ class Evaluator {
         }
         return currentEvaluationResults;
     }
-    public List<Vector3> DecimateBakedLightProbes(Vector3[] evaluationPoints, LightProbes lightProbes) {
+    public List<Vector3> DecimateBakedLightProbes(Vector3[] evaluationPoints, List<Vector3> posIn, List<SphericalHarmonicsL2> bakedProbes) {
         // TODO: add iterate
         // TODO: optimize, e.g. stochastic
         // TODO: modify cost function
@@ -223,34 +223,33 @@ class Evaluator {
         // TODO: finalize plugin/UI software engineering
 
         // store the final result here
-        // Note: The LightmapSettings.lightProbes that contains the SH does not have updated the "unlit LP" data
-        List<Vector3> finalPositionsDecimated = new List<Vector3>(LightmapSettings.lightProbes.positions);
-        List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
+        List<Vector3>              finalPositionsDecimated   = new List<Vector3>(posIn);
+        List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
 
-        float maxError = 0.1f;
-        float currentEvaluationError = 0.0f;
-        int iteration = 0;
-        bool is_stochastic = true;
-        int random_samples_each_iteration = lightProbes.count;
-        if (is_stochastic) {
-            random_samples_each_iteration = Mathf.Min(10, lightProbes.count);
-        }
+        float   maxError                        = 0.1f;
+        float   currentEvaluationError          = 0.0f;
+        int     iteration                       = 0;
+        int     maxIterations                   = finalPositionsDecimated.Count - terminationMinLightProbes;
+        bool    is_stochastic                   = false;
 
-        while (currentEvaluationError < maxError && iteration < 3) {
-            int decimatedIndex = -1;
+        while (currentEvaluationError < maxError && iteration < maxIterations) {
+
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. Done
             // Step 2: Only evaluate points in the vicinity of the probe. TODO:
-            float decimatedCostMin = float.MaxValue;
+
+            int     decimatedIndex      = -1;
+            float   decimatedCostMin    = float.MaxValue;
+            
+            int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
-                List<Vector3> probePositionsDecimated = new List<Vector3>(finalPositionsDecimated);
-                List<SphericalHarmonicsL2> bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(finalLightProbesDecimated);
-                int random_index = i;
-                if (is_stochastic) {
-                    random_index = Random.Range(0, random_samples_each_iteration);
-                }
+                List<Vector3>               probePositionsDecimated   = new List<Vector3>(finalPositionsDecimated);
+                List<SphericalHarmonicsL2>  bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(finalLightProbesDecimated);
+                
+                int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
+
                 probePositionsDecimated.RemoveAt(random_index);
                 bakedLightProbesDecimated.RemoveAt(random_index);
 
@@ -265,22 +264,26 @@ class Evaluator {
 
                 // 5. Find light probe with the minimum error
                 if (decimatedCost < decimatedCostMin) {
-                    decimatedIndex = i;
-                    decimatedCostMin = decimatedCost;
+                    decimatedIndex           = i;
+                    decimatedCostMin         = decimatedCost;
                     evaluationTotalDecimated = RGBToFloat(ComputeCurrentValue(currentEvaluationResults));
                 }
             }
+
             if (decimatedIndex == -1) {
                 Debug.LogError("No probe found during the iteration");
             }
+
             // 6. Remove light probe with the minimum error
             finalPositionsDecimated.RemoveAt(decimatedIndex);
             finalLightProbesDecimated.RemoveAt(decimatedIndex);
             currentEvaluationError = decimatedCostMin;
-            Debug.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString("0.00") + ". Removed probe: " + decimatedIndex.ToString());
+            
+            Debug.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
             ++iteration;
         }
         evaluationError = currentEvaluationError;
+
         return finalPositionsDecimated;
     }
     public void EvaluateVisibilityPoints(Vector3[] posIn, out bool[] unlitPoints) {

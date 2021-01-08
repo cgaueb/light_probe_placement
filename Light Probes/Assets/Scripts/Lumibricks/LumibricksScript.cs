@@ -31,6 +31,8 @@ public class LumibricksScript : MonoBehaviour
 
     Evaluator m_evaluator = new Evaluator();
 
+    List<SphericalHarmonicsL2> LightProbesBakedProbes = null;
+
     GeneratorInterface currentLightProbesGenerator = null;
     GeneratorInterface currentEvaluationPointsGenerator = null;
     Dictionary<PlacementType, GeneratorInterface> generatorListLightProbes;
@@ -106,7 +108,7 @@ public class LumibricksScript : MonoBehaviour
     public void Reset() {
         Debug.Log("Reset entered");
 
-        m_evaluator.Reset();
+        m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
 
         LightProbesPlaceType = PlacementType.Poisson;
         EvaluationPositionsPlaceType = PlacementType.Random;
@@ -214,7 +216,7 @@ public class LumibricksScript : MonoBehaviour
             return;
         }
         GenerateLightProbes();
-        m_evaluator.ResetLightProbeData();
+        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
     }
 
     public void ResetLightProbes() {
@@ -230,7 +232,7 @@ public class LumibricksScript : MonoBehaviour
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
         currentLightProbesGenerator.Reset();
         GenerateLightProbes();
-        m_evaluator.ResetLightProbeData();
+        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
     }
     public void PlaceEvaluationPoints() {
         if (!UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds)) {
@@ -262,28 +264,34 @@ public class LumibricksScript : MonoBehaviour
             mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
     }
 
+    public void Bake() {
+        Lightmapping.Bake();
+        LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
+    }
+
     public void RemoveUnlitLightProbes() {
-        // STEP 1
+
         // Remove Dark Probes to discard invisible or ones that are hidden inside geometry
         bool[] unlitPoints;
         currentLightProbesGenerator.TotalNumProbes = currentLightProbesGenerator.Positions.Count;
-        GetLitLightProbes(LightmapSettings.lightProbes, currentLightProbesGenerator.Positions, out unlitPoints);
+        m_evaluator.EvaluateBakedLightProbes(LightProbesBakedProbes.ToArray(), out unlitPoints);
+        
+        int count = 0;
+        for (int i = unlitPoints.Length -1; i >= 0; --i) {
+            if (unlitPoints[i]) {
+                ++count;
+                currentLightProbesGenerator.Positions.RemoveAt(i);
+                LightProbesBakedProbes.RemoveAt(i);
+            }
+        }
+        Debug.Log("Removed " + count.ToString() + " light probes");
+
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
+
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
 
-        // We need to update the LightmapSettings as well
-        List<Vector3> newLP = new List<Vector3>(LightmapSettings.lightProbes.positions);
-        List<SphericalHarmonicsL2> newSH = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
-        for (int i = unlitPoints.Length -1; i >= 0; --i) {
-            if (!unlitPoints[i]) {
-                continue;
-            }
-            newLP.RemoveAt(i);
-            newSH.RemoveAt(i);
-        }
-        // THIS DOESN'T DO ANYTHING...
-        LightmapSettings.lightProbes.bakedProbes = newSH.ToArray();
+        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
     }
 
     public void RemoveUnlitEvaluationPoints() {
@@ -292,11 +300,14 @@ public class LumibricksScript : MonoBehaviour
         currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
     }
     public void EvaluateEvaluationPoints() {
-        m_evaluator.EvaluateReferencePoints(LightmapSettings.lightProbes.bakedProbes, currentEvaluationPointsGenerator.Positions.ToArray());
+        m_evaluator.EvaluateReferencePoints(LightProbesBakedProbes.ToArray(), currentEvaluationPointsGenerator.Positions.ToArray());
     }
     public void DecimateLightProbes() {
-        // Decimation
-        currentLightProbesGenerator.Positions = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions.ToArray(), LightmapSettings.lightProbes);
+        
+        currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
+        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions.ToArray(), currentLightProbesGenerator.Positions, LightProbesBakedProbes);
+        currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
+        Debug.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes");
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
@@ -356,9 +367,6 @@ public class LumibricksScript : MonoBehaviour
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
-
-        // Tetrahedralize
-        //LightProbes.Tetrahedralize();
     }
 
     void GenerateEvaluationPoints() {
@@ -416,23 +424,6 @@ public class LumibricksScript : MonoBehaviour
         obj.transform.parent = parenttobject.transform;
         obj.SetActive(true);
         obj.name = "Evaluation Point " + index.ToString();
-    }
-
-    void GetLitLightProbes(LightProbes lpIn, List<Vector3> posOut, out bool[] unlitPoints) {
-        posOut.Clear();
-        // Evaluation
-        m_evaluator.EvaluateBakedLightProbes(lpIn.bakedProbes, out unlitPoints);
-
-        int count = 0;
-        // Delete Nodes
-        for (int i = 0; i < unlitPoints.Length; ++i) {
-            if (unlitPoints[i]) {
-                ++count;
-                continue;
-            }
-            posOut.Add(lpIn.positions[i]);
-        }
-        Debug.Log("Removed " + count.ToString() + " light probes");
     }
 
     void GetLitEvaluationPoints(Vector3[] posIn, List<Vector3> posOut) {

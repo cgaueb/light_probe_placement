@@ -240,15 +240,20 @@ public class LightProbesEditor : Editor
     }
 
     float BakeLightProbes() {
-        stopwatch = Stopwatch.StartNew();
-        //EditorUtility.DisplayProgressBar("Clear Caches", "Clean", 0f);
-        //Lightmapping.ClearDiskCache();
-        //Lightmapping.ClearLightingDataAsset();
-        //EditorUtility.DisplayProgressBar("Clear Caches", "Clean", 1f);
 
-        EditorUtility.DisplayProgressBar("Bake", "Bake", 0f);
-        Lightmapping.BakeAsync();
-        EditorUtility.DisplayProgressBar("Bake", "Bake", 1f);
+        LumibricksScript script = (LumibricksScript)target;
+
+        stopwatch = Stopwatch.StartNew();
+        {
+            //EditorUtility.DisplayProgressBar("Clear Caches", "Clean", 0f);
+            //Lightmapping.ClearDiskCache();
+            //Lightmapping.ClearLightingDataAsset();
+            //EditorUtility.DisplayProgressBar("Clear Caches", "Clean", 1f);
+
+            EditorUtility.DisplayProgressBar("Bake", "Bake", 0f);
+            script.Bake();
+            EditorUtility.DisplayProgressBar("Bake", "Bake", 1f);
+        }
         stopwatch.Stop();
 
         return stopwatch.ElapsedMilliseconds;
