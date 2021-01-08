@@ -129,7 +129,7 @@ public class LightProbesEditor : Editor
         // Start Process - Decimate Light Probes
         if (clickedDecimateLightProbes) {
             float decimatems = DecimateLightProbes();
-            UnityEngine.Debug.Log("Done  (Evaluate EP: " + decimatems / 1000.0 + "s)");
+            UnityEngine.Debug.Log("Done  (Decimate LP: " + decimatems / 1000.0 + "s)");
             FinishProcess();
         }
     }
