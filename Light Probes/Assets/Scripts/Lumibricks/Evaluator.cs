@@ -340,18 +340,18 @@ class Evaluator {
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
             }
-            Debug.Log("Step 1: " + step1 / 1000.0 + "s");
-            Debug.Log("Step 1B: " + step1b / 1000.0 + "s");
-            Debug.Log("Step 2: " + step2 / 1000.0 + "s");
-            Debug.Log("Step 3: " + step3 / 1000.0 + "s");
-            Debug.Log("    Tetr: " + tetr / 1000.0 + "s");
-            Debug.Log("    Mapping: " + mapping / 1000.0 + "s");
-            Debug.Log("Step 4: " + step4 / 1000.0 + "s");
-            Debug.Log("Step 5: " + step5 / 1000.0 + "s");
-            Debug.Log("Total: " + totalms / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 1: " + step1 / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 1B: " + step1b / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 2: " + step2 / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 3: " + step3 / 1000.0 + "s");
+            LumiLogger.Logger.Log("    Tetr: " + tetr / 1000.0 + "s");
+            LumiLogger.Logger.Log("    Mapping: " + mapping / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 4: " + step4 / 1000.0 + "s");
+            LumiLogger.Logger.Log("Step 5: " + step5 / 1000.0 + "s");
+            LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s");
 
             if (decimatedIndex == -1) {
-                Debug.LogError("No probe found during the iteration");
+                LumiLogger.Logger.LogError("No probe found during the iteration");
             }
 
             // 6. Remove light probe with the minimum error
@@ -359,7 +359,7 @@ class Evaluator {
             finalLightProbesDecimated.RemoveAt(decimatedIndex);
             currentEvaluationError = decimatedCostMin;
             
-            Debug.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
+            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
             ++iteration;
         }
         evaluationError = currentEvaluationError;
@@ -393,7 +393,7 @@ class Evaluator {
                 RaycastHit hit;
                 if (Physics.Raycast(visRay, out hit, float.MaxValue, layerMask)) {
                     // Collision Found
-                    // Debug.Log("EP" + i + "-> Collision with " + hit.point);
+                    // LumiLogger.Logger.Log("EP" + i + "-> Collision with " + hit.point);
                     invalidPoints[i] = true;
                     break;
                 }
@@ -429,7 +429,7 @@ class Evaluator {
         tetr += stopwatch.ElapsedMilliseconds;
 
         if (probePositions.Count != tetrahedralizePositions.Length) {
-            Debug.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
+            LumiLogger.Logger.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
         }
 
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -450,9 +450,9 @@ class Evaluator {
                 }
             }
             if (evaluationTetrahedron[evaluationPositionIndex] < 0) {
-                //Debug.LogWarning("Could not map EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString() + " to any tetrahedron");
+                //LumiLogger.Logger.LogWarning("Could not map EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString() + " to any tetrahedron");
             } else {
-                //Debug.Log("Mapped EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString());
+                //LumiLogger.Logger.Log("Mapped EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString());
             }
         }
         stopwatch.Stop();

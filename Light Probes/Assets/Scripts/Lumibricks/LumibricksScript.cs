@@ -48,7 +48,7 @@ public class LumibricksScript : MonoBehaviour
 
     #region Constructor Functions
     public LumibricksScript() {
-        Debug.Log("Lumi Script Constructor");
+        LumiLogger.Logger.Log("Lumi Script Constructor");
     }
     #endregion
 
@@ -65,17 +65,17 @@ public class LumibricksScript : MonoBehaviour
 
                 generatorListEvaluationPoints[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
                 generatorListEvaluationPoints[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
-                UnityEngine.Debug.Log("Nav mesh volume detected. Loading NavMesh elements");
+                LumiLogger.Logger.Log("Nav mesh volume detected. Loading NavMesh elements");
             } else if (nv == null && generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
                 generatorListLightProbes.Remove(PlacementType.NavMesh);
                 generatorListLightProbes.Remove(PlacementType.NavMeshVolume);
                 generatorListEvaluationPoints.Remove(PlacementType.NavMesh);
                 generatorListEvaluationPoints.Remove(PlacementType.NavMeshVolume);
-                UnityEngine.Debug.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
+                LumiLogger.Logger.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
             }
             return true;
         }
-        Debug.Log("Init");
+        LumiLogger.Logger.Log("Init");
         EPMaterial = new Material(Shader.Find("Unlit/Color"));
         EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
 
@@ -92,7 +92,7 @@ public class LumibricksScript : MonoBehaviour
         generatorListEvaluationPoints[PlacementType.Poisson] = new GeneratorPoisson();
 
         if (nv == null) {
-            UnityEngine.Debug.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
+            LumiLogger.Logger.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
             return false;
         }
 
@@ -106,7 +106,7 @@ public class LumibricksScript : MonoBehaviour
     }
 
     public void Reset() {
-        Debug.Log("Reset entered");
+        LumiLogger.Logger.Log("Reset entered");
 
         m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
 
@@ -196,7 +196,7 @@ public class LumibricksScript : MonoBehaviour
         return m_evaluator.populateGUI_LightProbesDecimated(currentLightProbesGenerator, currentEvaluationPointsGenerator, executeAll);
     }
     public void Destroy() {
-        Debug.Log("Destroy entered");
+        LumiLogger.Logger.Log("Destroy entered");
 
         DestroyImmediate(EPMaterial);
         ResetLightProbes();
@@ -260,7 +260,7 @@ public class LumibricksScript : MonoBehaviour
 
     public void MapEvaluationPointsToLightProbes() {
         int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
-        Debug.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + "of EPs: " + 
+        LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + "of EPs: " + 
             mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
     }
 
@@ -285,7 +285,7 @@ public class LumibricksScript : MonoBehaviour
             currentLightProbesGenerator.Positions.RemoveAt(i);
             LightProbesBakedProbes.RemoveAt(i);
         }
-        Debug.Log("Removed " + count.ToString() + " light probes");
+        LumiLogger.Logger.Log("Removed " + count.ToString() + " light probes");
 
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
 
@@ -314,7 +314,7 @@ public class LumibricksScript : MonoBehaviour
                 continue;
             }
         }
-        Debug.Log("Removed " + count.ToString() + " evaluation points");
+        LumiLogger.Logger.Log("Removed " + count.ToString() + " evaluation points");
         currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
     }
     public void EvaluateEvaluationPoints() {
@@ -332,7 +332,7 @@ public class LumibricksScript : MonoBehaviour
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
         currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
-        Debug.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes");
+        LumiLogger.Logger.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes");
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
@@ -360,7 +360,7 @@ public class LumibricksScript : MonoBehaviour
         if (gameObject != null) {
             Renderer renderer = gameObject.GetComponent<Renderer>();
             if (renderer == null) {
-                Debug.LogError("No renderer found for GameObject: " + gameObject.name);
+                LumiLogger.Logger.LogError("No renderer found for GameObject: " + gameObject.name);
                 return false;
             }
             renderers.Add(renderer);
@@ -434,7 +434,7 @@ public class LumibricksScript : MonoBehaviour
     void DestroyEvaluationPoints() {
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
         if (evaluationObjectParent == null) {
-            Debug.LogWarning("Could not find object: " + "EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
+            LumiLogger.Logger.LogWarning("Could not find object: " + "EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
             return;
         }
         Transform[] evaluationObjectsTransforms = evaluationObjectParent.GetComponentsInChildren<Transform>();

@@ -35,7 +35,7 @@ public class GeneratorNavMeshVolume : GeneratorInterface
         float height = navMeshAgent.height;
         NavMeshTriangulation navMesh = NavMesh.CalculateTriangulation();
         if (navMesh.vertices.Length == 0) {
-            Debug.LogWarning("You have to declare a NavMesh!");
+            LumiLogger.Logger.LogWarning("You have to declare a NavMesh!");
         }
 
         foreach (Vector3 pos in navMesh.vertices) {

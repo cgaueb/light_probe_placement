@@ -28,11 +28,11 @@ public class LightProbesEditor : Editor
         EditorStylesMainAction.normal.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
         EditorStylesSubAction = new GUIStyle(EditorStyles.boldLabel);
         EditorStylesSubAction.normal.textColor = new Color(colorSubAction.r * scale, colorSubAction.g * scale, colorSubAction.b * scale);
-
+        
         // Set LightProbeGroup
         var component = script.GetComponent<LightProbeGroup>();
         if (component == null) {
-            UnityEngine.Debug.LogWarning("Not a LightProbeGroup component");
+            LumiLogger.Logger.LogWarning("Not a LightProbeGroup component");
             return;
         }
         script.LightProbeGroup = component;
@@ -62,68 +62,68 @@ public class LightProbesEditor : Editor
         // Start Process - Clear Light Probes
         if (clickedResetLightProbes) {
             float placems = ResetLightProbes();
-            UnityEngine.Debug.Log("Done (ResetLightProbes: " + placems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (ResetLightProbes: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Place Light Probes
         if (clickedPlaceLightProbes) {
             float placems = PlaceLightProbes();
-            UnityEngine.Debug.Log("Done (PlaceLightProbes: " + placems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (PlaceLightProbes: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Clear Evaluation Points
         if (clickedResetEvaluationPoints) {
             float placems = ResetEvaluationPoints();
-            UnityEngine.Debug.Log("Done (ResetEvaluationsPoints: " + placems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (ResetEvaluationsPoints: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Place Evaluation Points
         if (clickedPlaceEvaluationPoints) {
             float placems = PlaceEvaluationPoints();
-            UnityEngine.Debug.Log("Done (PlaceEvaluationPoints: " + placems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (PlaceEvaluationPoints: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         if (clickedMapEvaluationPointsToLightProbes) {
             float mappings = MapEvaluationPointsToLightProbes();
-            UnityEngine.Debug.Log("Done (MapEvaluationPointsToLightProbes: " + mappings / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (MapEvaluationPointsToLightProbes: " + mappings / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Bake 
         if (clickedBakeLightProbes) {
             if (!Lightmapping.bakedGI) {
-                UnityEngine.Debug.LogWarning("Baked GI option must be enabled to perform optimization");
+                LumiLogger.Logger.LogWarning("Baked GI option must be enabled to perform optimization");
                 FinishProcess();
                 return;
             }
 
             float bakeLPms = BakeLightProbes();
-            UnityEngine.Debug.Log("Done  (Bake: " + bakeLPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done  (Bake: " + bakeLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Light Probes
         if (clickedSimplifyLightProbes) {
             float removeInvalidLPms = RemoveInvalidLightProbes();
-            UnityEngine.Debug.Log("Done  (Remove Invalid LP: " + removeInvalidLPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done  (Remove Invalid LP: " + removeInvalidLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Evaluation Points
         if (clickedSimplifyEvaluationPoints) {
             float removeInvalidEPms = RemoveInvalidEvaluationPoints();
-            UnityEngine.Debug.Log("Done  (Remove Invalid EP: " + removeInvalidEPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done  (Remove Invalid EP: " + removeInvalidEPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Evaluate
         if (clickedEvaluateEvaluationPoints) {
             float evaluatems = EvaluateEvaluationPoints();
-            UnityEngine.Debug.Log("Done  (Evaluate EP: " + evaluatems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done  (Evaluate EP: " + evaluatems / 1000.0 + "s)");
             FinishProcess();
         }
 
@@ -135,7 +135,7 @@ public class LightProbesEditor : Editor
             } else {
                 decimatems = DecimateLightProbes(false);
             }
-            UnityEngine.Debug.Log("Done  (Decimate LP: " + decimatems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done  (Decimate LP: " + decimatems / 1000.0 + "s)");
             FinishProcess();
         }
     }
@@ -147,20 +147,20 @@ public class LightProbesEditor : Editor
         Repaint();
     }
     public void Awake() {
-        UnityEngine.Debug.Log("Awake");
+        LumiLogger.Logger.Log("Awake");
     }
 
     public void OnEnable() {
-        UnityEngine.Debug.Log("OnEnable");
+        LumiLogger.Logger.Log("OnEnable");
     }
 
     public void OnDisable() {
-        UnityEngine.Debug.Log("OnDisable");
+        LumiLogger.Logger.Log("OnDisable");
     }
 
     void OnDestroy() // [TODO] not activated - we have to destroy EP game objs !
     {
-        UnityEngine.Debug.Log("OnDestroy entered");
+        LumiLogger.Logger.Log("OnDestroy entered");
         LumibricksScript script = (LumibricksScript)target;
         //script.Destroy();
     }
