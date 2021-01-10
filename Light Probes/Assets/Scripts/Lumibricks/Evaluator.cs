@@ -280,6 +280,8 @@ class Evaluator {
             long step3 = 0;
             long step4 = 0;
             long step5 = 0;
+            tetr = 0;
+            mapping = 0;
             System.Diagnostics.Stopwatch stopwatch;
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
             Vector3 last_position_removed = new Vector3();
@@ -342,6 +344,8 @@ class Evaluator {
             Debug.Log("Step 1B: " + step1b / 1000.0 + "s");
             Debug.Log("Step 2: " + step2 / 1000.0 + "s");
             Debug.Log("Step 3: " + step3 / 1000.0 + "s");
+            Debug.Log("    Tetr: " + tetr / 1000.0 + "s");
+            Debug.Log("    Mapping: " + mapping / 1000.0 + "s");
             Debug.Log("Step 4: " + step4 / 1000.0 + "s");
             Debug.Log("Step 5: " + step5 / 1000.0 + "s");
             Debug.Log("Total: " + totalms / 1000.0 + "s");
@@ -414,13 +418,21 @@ class Evaluator {
         sh2 = weights.x * tetrahedronSH2[0] + weights.y * tetrahedronSH2[1] + weights.z * tetrahedronSH2[2] + weights.w * tetrahedronSH2[3];
     }
 
+    long tetr = 0;
+    long mapping = 0;
+
     public int MapEvaluationPointsToLightProbes(List<Vector3> probePositions, List<Vector3> evalPositions) {
+        System.Diagnostics.Stopwatch stopwatch;
+        stopwatch = System.Diagnostics.Stopwatch.StartNew();
         Lightmapping.Tetrahedralize(probePositions.ToArray(), out tetrahedralizeIndices, out tetrahedralizePositions);
+        stopwatch.Stop();
+        tetr += stopwatch.ElapsedMilliseconds;
 
         if (probePositions.Count != tetrahedralizePositions.Length) {
             Debug.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
         }
 
+        stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int mapped = 0;
         Vector3[] tetrahedronPositions;
         evaluationTetrahedron = new List<int>(evalPositions.Count);
@@ -443,6 +455,8 @@ class Evaluator {
                 //Debug.Log("Mapped EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString());
             }
         }
+        stopwatch.Stop();
+        mapping += stopwatch.ElapsedMilliseconds;
         return mapped;
     }
     public void EvaluateBakedLightProbes(List<SphericalHarmonicsL2> bakedProbes, out List<bool> invalidPoints) {
