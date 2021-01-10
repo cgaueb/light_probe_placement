@@ -282,11 +282,13 @@ class Evaluator {
             long step5 = 0;
             System.Diagnostics.Stopwatch stopwatch;
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
+            Vector3 last_position_removed = new Vector3();
+            SphericalHarmonicsL2 last_SH_removed = new SphericalHarmonicsL2();
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                List<Vector3>               probePositionsDecimated   = new List<Vector3>(finalPositionsDecimated);
-                List<SphericalHarmonicsL2>  bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(finalLightProbesDecimated);
+                //List<Vector3>               probePositionsDecimated   = new List<Vector3>(finalPositionsDecimated);
+                //List<SphericalHarmonicsL2>  bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(finalLightProbesDecimated);
                 stopwatch.Stop();
                 step1 += stopwatch.ElapsedMilliseconds; 
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -294,22 +296,24 @@ class Evaluator {
                 int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                probePositionsDecimated.RemoveAt(random_index);
-                bakedLightProbesDecimated.RemoveAt(random_index);
+                last_position_removed = finalPositionsDecimated[random_index];
+                finalPositionsDecimated.RemoveAt(random_index);
+                last_SH_removed = finalLightProbesDecimated[random_index];
+                finalLightProbesDecimated.RemoveAt(random_index);
                 stopwatch.Stop();
                 step1b += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
 
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                MapEvaluationPointsToLightProbes(probePositionsDecimated, evaluationPoints);
+                MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step2 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
 
                 // 3. Evaluate
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                List<Vector3> currentEvaluationResults = EvaluatePoints(bakedLightProbesDecimated, evaluationPoints);
+                List<Vector3> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step3 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -329,6 +333,10 @@ class Evaluator {
                 }
                 step5 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
+
+                // add back the removed items O(n)
+                finalPositionsDecimated.Insert(random_index, last_position_removed);
+                finalLightProbesDecimated.Insert(random_index, last_SH_removed);
             }
             Debug.Log("Step 1: " + step1 / 1000.0 + "s");
             Debug.Log("Step 1B: " + step1b / 1000.0 + "s");
