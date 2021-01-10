@@ -30,8 +30,8 @@ public abstract class GeneratorInterface
     #region Virtual Functions
     public virtual void populateGUI_Simplification() {
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Before:", "The total number of light points before Simplification"), new GUIContent(m_positions_before.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("After :", "The total number of light probes after  Simplification"), new GUIContent(m_positions_after.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("Before:", "The total number of points before Simplification"), new GUIContent(m_positions_before.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("After :", "The total number of points after Simplification"), new GUIContent(m_positions_after.ToString()));
         EditorGUILayout.EndHorizontal();
     }
     virtual public string GeneratorName {
