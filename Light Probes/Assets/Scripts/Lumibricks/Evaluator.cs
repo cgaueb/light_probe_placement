@@ -75,6 +75,7 @@ class Evaluator {
     public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.Absolute;
     private SolverCallback EvaluationSolverCallback = null;
 
+    GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
 
     public void Reset(int probesCount) {
         ResetLightProbeData(probesCount);
@@ -96,8 +97,7 @@ class Evaluator {
         evaluationTotal = 0.0f;
         evaluationTotalDecimated = 0.0f;
     }
-
-    public bool populateGUI_LightProbesEvaluated() {
+    private void populateGUI_EvaluateDirections() {
         EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType);
         if (EvaluationType == LightProbesEvaluationType.Random) {
             int prevCount = evaluationRandomSamplingCount;
@@ -109,9 +109,14 @@ class Evaluator {
         } else {
             EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()));
         }
+    }
+    public bool populateGUI_LightProbesEvaluated() {
+        populateGUI_EvaluateDirections();
 
         GUILayout.BeginHorizontal();
-        bool clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
+        GUILayout.FlexibleSpace();
+        bool clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), defaultOption);
+        GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
         if (evaluationResults != null) {
@@ -120,10 +125,14 @@ class Evaluator {
         }
 
         EditorGUILayout.LabelField(new GUIContent("Avg Irradiance (Before):", "The evaluation average irradiance target"), new GUIContent(evaluationTotal.ToString("0.00")));
+
         return clickedEvaluateEvaluationPoints;
     }
 
-    public bool populateGUI_LightProbesDecimated() {
+    public bool populateGUI_LightProbesDecimated(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
+        if (executeAll) {
+            populateGUI_EvaluateDirections();
+        }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
         terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum set:", "The minimum desired number of light probes"), terminationMinLightProbes, 4, terminationMaxLightProbes);
@@ -131,12 +140,29 @@ class Evaluator {
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500));
+        bool clickedDecimateLightProbes = false;
+        if (executeAll) {
+            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer (needs Bake first)", "Optimizes light probes"), defaultOption);
+        } else {
+            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), defaultOption);
+        }
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
-        EditorGUILayout.LabelField(new GUIContent("Avg Irradiance (After): ", "The evaluation average irradiance after decimation"), new GUIContent(evaluationTotalDecimated.ToString("0.00")));
         EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00")));
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("Avg Irrad (Before):", "The evaluation average irradiance target"), new GUIContent(evaluationTotal.ToString("0.00")));
+        EditorGUILayout.LabelField(new GUIContent("Avg Irrad (After): ", "The evaluation average irradiance after decimation"), new GUIContent(evaluationTotalDecimated.ToString("0.00")));
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("LP Before:", "The total number of light probes before Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbes.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("LP After :", "The total number of light probes after  Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbesSimplified.ToString()));
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("EP Before:", "The total number of evaluation points before Simplification"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("EP After :", "The total number of evaluation points after  Simplification"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbesSimplified.ToString()));
+        EditorGUILayout.EndHorizontal();
+
         return clickedDecimateLightProbes;
     }
 

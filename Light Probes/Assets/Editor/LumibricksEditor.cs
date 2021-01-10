@@ -10,6 +10,7 @@ public class LightProbesEditor : Editor
     GUIStyle EditorStylesHeader;
     GUIStyle EditorStylesMainAction;
     GUIStyle EditorStylesSubAction;
+    bool simpleGUI = true;
     #endregion
 
     #region Public Override Functions
@@ -128,7 +129,12 @@ public class LightProbesEditor : Editor
 
         // Start Process - Decimate Light Probes
         if (clickedDecimateLightProbes) {
-            float decimatems = DecimateLightProbes();
+            float decimatems = 0.0f;
+            if (simpleGUI) {
+                decimatems = DecimateLightProbes(true);
+            } else {
+                decimatems = DecimateLightProbes(false);
+            }
             UnityEngine.Debug.Log("Done  (Decimate LP: " + decimatems / 1000.0 + "s)");
             FinishProcess();
         }
@@ -300,13 +306,13 @@ public class LightProbesEditor : Editor
 
         return stopwatch.ElapsedMilliseconds;
     }
-    float DecimateLightProbes() {
+    float DecimateLightProbes(bool executeAll) {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
         {
             EditorUtility.DisplayProgressBar("Decimate light probes", "Decimate", 0f);
-            script.DecimateLightProbes();
+            script.DecimateLightProbes(executeAll);
             EditorUtility.DisplayProgressBar("Decimate light probes", "Decimate", 1f);
         }
         stopwatch.Stop();
@@ -335,20 +341,18 @@ public class LightProbesEditor : Editor
                 clickedRemoveInvalidLightProbes, clickedRemoveInvalidEvaluationPoints,
                 clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
         }
-        GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
+        GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(false), GUILayout.MinWidth(50), GUILayout.MaxWidth(1500) };
 
         EditorGUILayout.LabelField("Light Probes Cut Algorithm", EditorStylesHeader);
         EditorGUILayout.Space();
 
-        bool clicked = GUILayout.Button(new GUIContent("Set Volumes", ""), defaultOption);
+        bool clicked = GUILayout.Button(new GUIContent("Auto set LP/EP Volumes (Debug)", ""), defaultOption);
         if (clicked) {
-            script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
             script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
+            script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
         }
 
         EditorGUILayout.LabelField("1. Placement", EditorStylesMainAction);
-        EditorGUILayout.Space();
-
         EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
         script.populateGUI_LightProbes();
 
@@ -369,50 +373,62 @@ public class LightProbesEditor : Editor
         clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
         GUILayout.EndHorizontal();
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2. Simplification", EditorStylesMainAction);
+        if (simpleGUI) {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2. Optimization", EditorStylesMainAction);
 
-        GUILayout.BeginHorizontal();
-        clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes", "Bake light probes"), defaultOption);
-        GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
+            GUILayout.EndHorizontal();
+            EditorGUILayout.Space();
+            clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated(true);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2.1. Remove Invalid Objects", EditorStylesSubAction);
-        EditorGUILayout.Space();
+        } else {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2. Simplification", EditorStylesMainAction);
 
-        //EditorGUILayout.LabelField("2.1.1. Light Probes", EditorStyles.boldLabel);
-        GUILayout.BeginHorizontal();
-        clickedRemoveInvalidLightProbes = GUILayout.Button(new GUIContent("Remove Invalid Light Probes", "Remove invalid light probes"), defaultOption);
-        GUILayout.EndHorizontal();
-        script.populateGUI_LightProbesSimplified();
+            GUILayout.BeginHorizontal();
+            clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
+            GUILayout.EndHorizontal();
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2.1. Remove Invalid Objects", EditorStylesSubAction);
+            EditorGUILayout.Space();
 
-        EditorGUILayout.Space();
-        //EditorGUILayout.LabelField("2.1.2. Evaluation Points", EditorStyles.boldLabel);
+            //EditorGUILayout.LabelField("2.1.1. Light Probes", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            clickedRemoveInvalidLightProbes = GUILayout.Button(new GUIContent("Remove Invalid Light Probes", "Remove invalid light probes"), defaultOption);
+            GUILayout.EndHorizontal();
+            script.populateGUI_LightProbesSimplified();
 
-        EditorGUILayout.Space();
-        clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
+            EditorGUILayout.Space();
+            //EditorGUILayout.LabelField("2.1.2. Evaluation Points", EditorStyles.boldLabel);
 
-        GUILayout.BeginHorizontal();
-        clickedRemoveInvalidEvaluationPoints = GUILayout.Button(new GUIContent("Remove Invalid Evaluation Points", "Remove invalid evaluation points"), defaultOption);
-        GUILayout.EndHorizontal();
-        script.populateGUI_EvaluationPointsSimplified();
+            EditorGUILayout.Space();
+            clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2.2. Graph Reduction", EditorStylesSubAction);
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2.2.1. Evaluation", EditorStyles.boldLabel);
-        clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
+            GUILayout.BeginHorizontal();
+            clickedRemoveInvalidEvaluationPoints = GUILayout.Button(new GUIContent("Remove Invalid Evaluation Points", "Remove invalid evaluation points"), defaultOption);
+            GUILayout.EndHorizontal();
+            script.populateGUI_EvaluationPointsSimplified();
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("2.2.2. Decimation", EditorStyles.boldLabel);
-        clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated();
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2.2. Graph Reduction", EditorStylesSubAction);
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2.2.1. Evaluation", EditorStyles.boldLabel);
+            //clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
+            clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("3. Optimization", EditorStylesMainAction);
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("3.1. Refinement", EditorStylesSubAction);
-        EditorGUILayout.Space();
-        EditorGUILayout.Space();
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("2.2.2. Decimation", EditorStyles.boldLabel);
+            clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated(false);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("3. Optimization", EditorStylesMainAction);
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("3.1. Refinement", EditorStylesSubAction);
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+        }
 
         clickedSuccess = true;
         return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,

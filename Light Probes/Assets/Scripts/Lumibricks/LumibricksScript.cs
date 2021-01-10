@@ -33,8 +33,8 @@ public class LumibricksScript : MonoBehaviour
 
     List<SphericalHarmonicsL2> LightProbesBakedProbes = null;
 
-    GeneratorInterface currentLightProbesGenerator = null;
-    GeneratorInterface currentEvaluationPointsGenerator = null;
+    public GeneratorInterface currentLightProbesGenerator = null;
+    public GeneratorInterface currentEvaluationPointsGenerator = null;
     Dictionary<PlacementType, GeneratorInterface> generatorListLightProbes;
     Dictionary<PlacementType, GeneratorInterface> generatorListEvaluationPoints;
     #endregion
@@ -192,10 +192,9 @@ public class LumibricksScript : MonoBehaviour
     public bool populateGUI_LightProbesEvaluated() {
         return m_evaluator.populateGUI_LightProbesEvaluated();
     }
-    public bool populateGUI_LightProbesDecimated() {
-        return m_evaluator.populateGUI_LightProbesDecimated();
+    public bool populateGUI_LightProbesDecimated(bool executeAll) {
+        return m_evaluator.populateGUI_LightProbesDecimated(currentLightProbesGenerator, currentEvaluationPointsGenerator, executeAll);
     }
-
     public void Destroy() {
         Debug.Log("Destroy entered");
 
@@ -267,7 +266,6 @@ public class LumibricksScript : MonoBehaviour
 
     public void Bake() {
         Lightmapping.BakeAsync();
-        //LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
     }
 
     public void RemoveInvalidLightProbes() {
@@ -322,8 +320,15 @@ public class LumibricksScript : MonoBehaviour
     public void EvaluateEvaluationPoints() {
         m_evaluator.EvaluateReferencePoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
     }
-    public void DecimateLightProbes() {
-        
+    public void DecimateLightProbes(bool executeAll) {
+        if (executeAll) {
+            RemoveInvalidLightProbes();
+            Lightmapping.Bake();
+            MapEvaluationPointsToLightProbes();
+            RemoveInvalidEvaluationPoints();
+            EvaluateEvaluationPoints();
+        }
+
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
         currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
@@ -331,6 +336,9 @@ public class LumibricksScript : MonoBehaviour
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
+        if (executeAll) {
+            // should call bake again here
+        }
     }
     #endregion
 
