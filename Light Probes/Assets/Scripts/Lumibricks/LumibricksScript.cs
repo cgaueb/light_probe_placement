@@ -260,7 +260,7 @@ public class LumibricksScript : MonoBehaviour
 
     public void MapEvaluationPointsToLightProbes() {
         int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
-        LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + "of EPs: " + 
+        LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " + 
             mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
     }
 
@@ -277,6 +277,7 @@ public class LumibricksScript : MonoBehaviour
         m_evaluator.EvaluateBakedLightProbes(LightProbesBakedProbes, out invalidPoints);
         
         int count = 0;
+        int original_total = currentLightProbesGenerator.TotalNumProbes;
         for (int i = invalidPoints.Count - 1; i >= 0; --i) {
             if (!invalidPoints[i]) {
                 continue;
@@ -285,7 +286,9 @@ public class LumibricksScript : MonoBehaviour
             currentLightProbesGenerator.Positions.RemoveAt(i);
             LightProbesBakedProbes.RemoveAt(i);
         }
-        LumiLogger.Logger.Log("Removed " + count.ToString() + " light probes");
+        LumiLogger.Logger.Log("Removed " + (count / (float)(currentLightProbesGenerator.Positions.Count)).ToString("0.00%") + " of LPs: " +
+          (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
+
 
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
 
@@ -303,6 +306,7 @@ public class LumibricksScript : MonoBehaviour
         m_evaluator.EvaluateVisibilityPoints(currentEvaluationPointsGenerator.Positions, out invalidPoints);
 
         int count = 0;
+        int original_total = currentEvaluationPointsGenerator.TotalNumProbes;
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
         // Delete Nodes & Objects
         for (int i = invalidPoints.Count - 1; i >= 0; --i) {
@@ -314,7 +318,8 @@ public class LumibricksScript : MonoBehaviour
                 continue;
             }
         }
-        LumiLogger.Logger.Log("Removed " + count.ToString() + " evaluation points");
+        LumiLogger.Logger.Log("Removed " + (count / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " +
+          (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
         currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
     }
     public void EvaluateEvaluationPoints() {
@@ -332,7 +337,8 @@ public class LumibricksScript : MonoBehaviour
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
         currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
-        LumiLogger.Logger.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes");
+
+        LumiLogger.Logger.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes, " + currentLightProbesGenerator.TotalNumProbesSimplified + " left");
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
