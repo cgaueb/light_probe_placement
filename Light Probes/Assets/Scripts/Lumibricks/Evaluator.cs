@@ -265,6 +265,17 @@ class Evaluator {
         int     maxIterations                   = finalPositionsDecimated.Count - terminationMinLightProbes;
         bool    is_stochastic                   = false;
 
+        long totalms = 0;
+        long step1 = 0;
+        long step1b = 0;
+        long step2 = 0;
+        long step3 = 0;
+        long step4 = 0;
+        long step5 = 0;
+        tetr = 0;
+            System.Diagnostics.Stopwatch stopwatch;
+        mapping = 0;
+
         while (currentEvaluationError < maxError && iteration < maxIterations) {
 
             // remove the Probe which contributes "the least" to the reference
@@ -274,16 +285,6 @@ class Evaluator {
             int     decimatedIndex      = -1;
             float   decimatedCostMin    = float.MaxValue;
 
-            long totalms = 0;
-            long step1 = 0;
-            long step1b = 0;
-            long step2 = 0;
-            long step3 = 0;
-            long step4 = 0;
-            long step5 = 0;
-            tetr = 0;
-            mapping = 0;
-            System.Diagnostics.Stopwatch stopwatch;
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
             Vector3 last_position_removed = new Vector3();
             SphericalHarmonicsL2 last_SH_removed = new SphericalHarmonicsL2();
@@ -341,15 +342,6 @@ class Evaluator {
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
             }
-            LumiLogger.Logger.Log("Step 1: " + step1 / 1000.0 + "s");
-            LumiLogger.Logger.Log("Step 1B: " + step1b / 1000.0 + "s");
-            LumiLogger.Logger.Log("Step 2: " + step2 / 1000.0 + "s");
-            LumiLogger.Logger.Log("Step 3: " + step3 / 1000.0 + "s");
-            LumiLogger.Logger.Log("    Tetr: " + tetr / 1000.0 + "s");
-            LumiLogger.Logger.Log("    Mapping: " + mapping / 1000.0 + "s");
-            LumiLogger.Logger.Log("Step 4: " + step4 / 1000.0 + "s");
-            LumiLogger.Logger.Log("Step 5: " + step5 / 1000.0 + "s");
-            LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s");
 
             if (decimatedIndex == -1) {
                 LumiLogger.Logger.LogError("No probe found during the iteration");
@@ -365,6 +357,16 @@ class Evaluator {
         }
         evaluationError = currentEvaluationError;
 
+        LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00"));
+        LumiLogger.Logger.Log("Step 1: " + step1 / 1000.0 + "s");
+        LumiLogger.Logger.Log("Step 1B: " + step1b / 1000.0 + "s");
+        LumiLogger.Logger.Log("Step 2: " + step2 / 1000.0 + "s");
+        LumiLogger.Logger.Log("Step 3: " + step3 / 1000.0 + "s");
+        LumiLogger.Logger.Log("    Tetr: " + tetr / 1000.0 + "s");
+        LumiLogger.Logger.Log("    Mapping: " + mapping / 1000.0 + "s");
+        LumiLogger.Logger.Log("Step 4: " + step4 / 1000.0 + "s");
+        LumiLogger.Logger.Log("Step 5: " + step5 / 1000.0 + "s");
+        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s");
         return finalPositionsDecimated;
     }
     public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
