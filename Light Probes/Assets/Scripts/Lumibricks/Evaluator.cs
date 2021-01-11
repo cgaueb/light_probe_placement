@@ -265,15 +265,17 @@ class Evaluator {
         int     maxIterations                   = finalPositionsDecimated.Count - terminationMinLightProbes;
         bool    is_stochastic                   = false;
 
+        LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
+
         long totalms = 0;
         long step1 = 0;
-        long step1b = 0;
         long step2 = 0;
         long step3 = 0;
         long step4 = 0;
         long step5 = 0;
+        long step6 = 0;
         tetr = 0;
-            System.Diagnostics.Stopwatch stopwatch;
+        System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
 
         while (currentEvaluationError < maxError && iteration < maxIterations) {
@@ -291,21 +293,14 @@ class Evaluator {
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                //List<Vector3>               probePositionsDecimated   = new List<Vector3>(finalPositionsDecimated);
-                //List<SphericalHarmonicsL2>  bakedLightProbesDecimated = new List<SphericalHarmonicsL2>(finalLightProbesDecimated);
-                stopwatch.Stop();
-                step1 += stopwatch.ElapsedMilliseconds; 
-                totalms += stopwatch.ElapsedMilliseconds;
-
                 int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
-
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 last_position_removed = finalPositionsDecimated[random_index];
                 finalPositionsDecimated.RemoveAt(random_index);
                 last_SH_removed = finalLightProbesDecimated[random_index];
                 finalLightProbesDecimated.RemoveAt(random_index);
                 stopwatch.Stop();
-                step1b += stopwatch.ElapsedMilliseconds;
+                step1 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
 
                 // 2. Map Evaluation Points to New Light Probe Set 
@@ -339,8 +334,11 @@ class Evaluator {
                 totalms += stopwatch.ElapsedMilliseconds;
 
                 // add back the removed items O(n)
+                stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
+                step6 += stopwatch.ElapsedMilliseconds;
+                totalms += stopwatch.ElapsedMilliseconds;
             }
 
             if (decimatedIndex == -1) {
@@ -358,15 +356,15 @@ class Evaluator {
         evaluationError = currentEvaluationError;
 
         LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00"));
-        LumiLogger.Logger.Log("Step 1: " + step1 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Step 1B: " + step1b / 1000.0 + "s");
-        LumiLogger.Logger.Log("Step 2: " + step2 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Step 3: " + step3 / 1000.0 + "s");
-        LumiLogger.Logger.Log("    Tetr: " + tetr / 1000.0 + "s");
-        LumiLogger.Logger.Log("    Mapping: " + mapping / 1000.0 + "s");
-        LumiLogger.Logger.Log("Step 4: " + step4 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Step 5: " + step5 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s");
+        LumiLogger.Logger.Log("1. Remove LP: " + step1 / 1000.0 + "s");
+        LumiLogger.Logger.Log("2. Remap EPs: " + step2 / 1000.0 + "s");
+        LumiLogger.Logger.Log("3. Eval  EPs: " + step3 / 1000.0 + "s");
+        LumiLogger.Logger.Log("3.1 Tetrahed: " + tetr / 1000.0 + "s");
+        LumiLogger.Logger.Log("3.2 Mappings: " + mapping / 1000.0 + "s");
+        LumiLogger.Logger.Log("4. Calc Cost: " + step4 / 1000.0 + "s");
+        LumiLogger.Logger.Log("5. Find Min : " + step5 / 1000.0 + "s");
+        LumiLogger.Logger.Log("6. Insert LP: " + step6 / 1000.0 + "s");
+        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s, " + (step1+step2+step3+step4+step5+step6)/1000.0 + "s");
         return finalPositionsDecimated;
     }
     public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
