@@ -262,7 +262,7 @@ class Evaluator {
         float   maxError                        = 0.1f;
         float   currentEvaluationError          = 0.0f;
         int     iteration                       = 0;
-        int     maxIterations                   = finalPositionsDecimated.Count - terminationMinLightProbes;
+        int     remaining_probes                = terminationMinLightProbes;
         bool    is_stochastic                   = false;
 
         LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
@@ -277,9 +277,8 @@ class Evaluator {
         tetr = 0;
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
-
-        while (currentEvaluationError < maxError && iteration < maxIterations) {
-
+        
+        while (currentEvaluationError < maxError && remaining_probes <= finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. Done
