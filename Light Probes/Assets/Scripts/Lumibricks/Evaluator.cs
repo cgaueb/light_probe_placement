@@ -136,7 +136,7 @@ class Evaluator {
         }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
-        terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum set:", "The minimum desired number of light probes"), terminationMinLightProbes, 4, terminationMaxLightProbes);
+        terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationMinLightProbes, 4, terminationMaxLightProbes);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
 
         GUILayout.BeginHorizontal();
