@@ -304,7 +304,7 @@ class Evaluator {
 
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints);
+                MapEvaluationPointsToLightProbesLocal(finalPositionsDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step2 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -421,6 +421,9 @@ class Evaluator {
     long tetr = 0;
     long mapping = 0;
 
+    public int MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
+        return MapEvaluationPointsToLightProbes(probePositions, evalPositions);
+    }
     public int MapEvaluationPointsToLightProbes(List<Vector3> probePositions, List<Vector3> evalPositions) {
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
