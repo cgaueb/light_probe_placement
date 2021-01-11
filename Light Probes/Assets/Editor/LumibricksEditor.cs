@@ -12,6 +12,7 @@ public class LightProbesEditor : Editor
     Stopwatch stopwatch = null;
     GUIStyle EditorStylesHeader;
     GUIStyle EditorStylesMainAction;
+    GUIStyle EditorStylesFoldoutMainAction;
     GUIStyle EditorStylesSubAction;
     bool simpleGUI = true;
     #endregion
@@ -21,6 +22,9 @@ public class LightProbesEditor : Editor
         LumibricksScript script = (LumibricksScript)target;
 
         float scale = 0.9f;
+        //Color colorHeader = new Color(1.0f, 0.65f, 0.0f);
+        //Color colorMainAction = new Color(1.0f, 0.65f, 0.0f);
+        //Color colorSubAction = new Color(0.95f, 0.95f, 0.0f);
         Color colorHeader = new Color(1.0f, 0.65f, 0.0f);
         Color colorMainAction = new Color(1.0f, 0.65f, 0.0f);
         Color colorSubAction = new Color(0.95f, 0.95f, 0.0f);
@@ -31,7 +35,16 @@ public class LightProbesEditor : Editor
         EditorStylesMainAction.normal.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
         EditorStylesSubAction = new GUIStyle(EditorStyles.boldLabel);
         EditorStylesSubAction.normal.textColor = new Color(colorSubAction.r * scale, colorSubAction.g * scale, colorSubAction.b * scale);
-        
+        EditorStylesFoldoutMainAction = new GUIStyle(EditorStyles.foldoutHeader);
+        EditorStylesFoldoutMainAction.normal.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.active.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.hover.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.focused.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.onNormal.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.onActive.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.onHover.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+        EditorStylesFoldoutMainAction.onFocused.textColor = new Color(colorMainAction.r * scale, colorMainAction.g * scale, colorMainAction.b * scale);
+
         // Set LightProbeGroup
         var component = script.GetComponent<LightProbeGroup>();
         if (component == null) {
@@ -160,7 +173,6 @@ public class LightProbesEditor : Editor
         m_ShowOptimization = new AnimBool(true);
         m_ShowOptimization.valueChanged.AddListener(Repaint);
     }
-
     public void OnDisable() {
         LumiLogger.Logger.Log("OnDisable");
     }
@@ -362,43 +374,47 @@ public class LightProbesEditor : Editor
             script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
         }
 
-        m_ShowPlacement.target = EditorGUILayout.ToggleLeft(new GUIContent("1. Placement", "Placement Fields"), m_ShowPlacement.target, EditorStylesMainAction);
-        if (EditorGUILayout.BeginFadeGroup(m_ShowPlacement.faded)) {
-            EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
-            script.populateGUI_LightProbes();
+        //m_ShowPlacement.target = EditorGUILayout.ToggleLeft(new GUIContent("1. Placement", "Placement Fields"), m_ShowPlacement.target, EditorStylesMainAction);
+        //if (EditorGUILayout.BeginFadeGroup(m_ShowPlacement.faded)) {
+            
+            m_ShowPlacement.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowPlacement.target, new GUIContent("1. Placement", "Placement Fields"), EditorStylesFoldoutMainAction);
+            if (m_ShowPlacement.target) {
+                EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
+                script.populateGUI_LightProbes();
+                GUILayout.BeginHorizontal();
+                clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
+                clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
+                GUILayout.EndHorizontal();
+                EditorGUILayout.Space();
 
-            GUILayout.BeginHorizontal();
-            clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
-            clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
-            GUILayout.EndHorizontal();
-            EditorGUILayout.Space();
+                EditorGUILayout.LabelField("1.2. Evaluation Points (EP)", EditorStylesSubAction);
+                script.populateGUI_EvaluationPoints();
 
-            EditorGUILayout.LabelField("1.2. Evaluation Points (EP)", EditorStylesSubAction);
-            script.populateGUI_EvaluationPoints();
+                // Created internally
+                // evaluationPointGeometry = EditorGUILayout.ObjectField("Geometry Representation", evaluationPointGeometry, typeof(GameObject), true) as GameObject;
 
-            // Created internally
-            // evaluationPointGeometry = EditorGUILayout.ObjectField("Geometry Representation", evaluationPointGeometry, typeof(GameObject), true) as GameObject;
-
-            GUILayout.BeginHorizontal();
-            clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
-            clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
-            GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
+                clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
+                GUILayout.EndHorizontal();
+            //}
         }
-        EditorGUILayout.EndFadeGroup();
+        EditorGUILayout.EndFoldoutHeaderGroup();
+        //EditorGUILayout.EndFadeGroup();
 
         EditorGUILayout.Space();
 
-        m_ShowOptimization.target = EditorGUILayout.ToggleLeft(new GUIContent("2. Simplification", "Simplification Fields"), m_ShowOptimization.target, EditorStylesMainAction);
-        if (EditorGUILayout.BeginFadeGroup(m_ShowOptimization.faded)) {
+        //m_ShowOptimization.target = EditorGUILayout.ToggleLeft(new GUIContent("2. Simplification", "Simplification Fields"), m_ShowOptimization.target, EditorStylesMainAction);
+        //if (EditorGUILayout.BeginFadeGroup(m_ShowOptimization.faded)) {
+        m_ShowOptimization.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowOptimization.target, new GUIContent("2. Simplification", "Simplification Fields"), EditorStylesFoldoutMainAction);
+        if (m_ShowOptimization.target) {
             if (simpleGUI) {
-
                 GUILayout.BeginHorizontal();
                 clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
                 GUILayout.EndHorizontal();
                 EditorGUILayout.Space();
                 clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated(true);
             } else {
-
                 GUILayout.BeginHorizontal();
                 clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
                 GUILayout.EndHorizontal();
@@ -442,7 +458,8 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.Space();
             }
         }
-        EditorGUILayout.EndFadeGroup();
+        EditorGUILayout.EndFoldoutHeaderGroup();
+        //EditorGUILayout.EndFadeGroup();
 
         clickedSuccess = true;
         return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
