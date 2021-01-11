@@ -327,8 +327,8 @@ public class LumibricksScript : MonoBehaviour
     }
     public void DecimateLightProbes(bool executeAll) {
         if (executeAll) {
-            RemoveInvalidLightProbes();
             Lightmapping.Bake();
+            RemoveInvalidLightProbes();
             MapEvaluationPointsToLightProbes();
             RemoveInvalidEvaluationPoints();
             EvaluateEvaluationPoints();
