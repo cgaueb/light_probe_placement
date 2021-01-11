@@ -72,7 +72,7 @@ class Evaluator {
     public int terminationMaxLightProbes = 0;
 
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
-    public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.Absolute;
+    public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.LeastSquares;
     private SolverCallback EvaluationSolverCallback = null;
 
     GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
@@ -83,8 +83,9 @@ class Evaluator {
     }
 
     public void ResetLightProbeData(int probesCount) {
-        terminationMinLightProbes = probesCount-1;
-        terminationMaxLightProbes = terminationMinLightProbes;
+        //terminationMinLightProbes = probesCount-1;
+        terminationMinLightProbes = 4;
+        terminationMaxLightProbes = probesCount - 1;
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();

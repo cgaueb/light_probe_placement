@@ -6,8 +6,8 @@ using UnityEngine;
 public class GeneratorStratified : GeneratorInterface
 {
     #region Public Variables
-    private Vector3Int defaultProbesDims = new Vector3Int(2, 2, 2);
-    private Vector3Int probesDims = new Vector3Int(2, 2, 2);
+    private Vector3Int defaultProbesDims = new Vector3Int(4, 4, 4);
+    private Vector3Int probesDims = new Vector3Int(4, 4, 4);
     #endregion
 
     #region Constructor Functions
