@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -148,6 +148,11 @@ class Evaluator {
     public bool populateGUI_LightProbesDecimated(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
         if (executeAll) {
             populateGUI_EvaluateDirections();
+
+            if (evaluationResults != null) {
+               Vector3 evaluationRGB = ComputeCurrentValue(evaluationResults);
+               evaluationTotal = RGBToFloat(evaluationRGB);
+            }
         }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();

@@ -443,7 +443,6 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.LabelField("2.2. Graph Reduction", EditorStylesSubAction);
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("2.2.1. Evaluation", EditorStyles.boldLabel);
-                //clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
                 clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
 
                 EditorGUILayout.Space();
