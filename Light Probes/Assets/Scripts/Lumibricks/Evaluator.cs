@@ -17,6 +17,12 @@ class Evaluator {
         Absolute,
         LeastSquares
     }
+    public enum LightEvaluationMetric
+    {
+        RGB,
+        Chrominance,
+        Luminance
+    }
 
     readonly List<Vector3> evaluationFixedDirections = new List<Vector3> { 
         // LOW  (6)
@@ -63,10 +69,9 @@ class Evaluator {
     public List<int> evaluationTetrahedron;
 
     // evaluation
-    public List<Vector3> evaluationResults; 
+    public List<Color> evaluationResults; 
     public float evaluationError = 0.0f;
     public float evaluationTotal = 0.0f;
-    public float evaluationTotalDecimated = 0.0f;
     public float terminationEvaluationError = 0.0f;
     public int terminationMinLightProbes = 0;
     public int terminationCurrentLightProbes = 0;
@@ -75,6 +80,9 @@ class Evaluator {
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
     public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.LeastSquares;
     private SolverCallback EvaluationSolverCallback = null;
+    public LightEvaluationMetric EvaluationMetric { get; set; } = LightEvaluationMetric.RGB;
+    private MetricCallback EvaluationMetricCallback = null;
+
 
     GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
 
@@ -97,7 +105,6 @@ class Evaluator {
         evaluationTetrahedron = null;
         evaluationRandomDirections = new List<Vector3>();
         evaluationTotal = 0.0f;
-        evaluationTotalDecimated = 0.0f;
     }
     private void populateGUI_EvaluateDirections() {
         EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType);
@@ -121,11 +128,6 @@ class Evaluator {
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
-        if (evaluationResults != null) {
-            Vector3 evaluationRGB = ComputeCurrentValue(evaluationResults);
-            evaluationTotal = RGBToFloat(evaluationRGB);
-        }
-
         EditorGUILayout.LabelField(new GUIContent("Avg Irradiance (Before):", "The evaluation average irradiance target"), new GUIContent(evaluationTotal.ToString("0.00")));
 
         return clickedEvaluateEvaluationPoints;
@@ -137,6 +139,9 @@ class Evaluator {
         }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
+        EvaluationMetric = (LightEvaluationMetric)EditorGUILayout.EnumPopup(new GUIContent("Metric:", "The metric used to evaluate the values"), EvaluationMetric);
+        EvaluationMetricCallback = GetMetricCallback();
+
         terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
 
@@ -153,10 +158,6 @@ class Evaluator {
 
         EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00")));
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Avg Irrad (Before):", "The evaluation average irradiance target"), new GUIContent(evaluationTotal.ToString("0.00")));
-        EditorGUILayout.LabelField(new GUIContent("Avg Irrad (After): ", "The evaluation average irradiance after decimation"), new GUIContent(evaluationTotalDecimated.ToString("0.00")));
-        EditorGUILayout.EndHorizontal();
-        EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField(new GUIContent("LP Before:", "The total number of light probes before Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbes.ToString()));
         EditorGUILayout.LabelField(new GUIContent("LP After :", "The total number of light probes after  Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbesSimplified.ToString()));
         EditorGUILayout.EndHorizontal();
@@ -168,27 +169,59 @@ class Evaluator {
         return clickedDecimateLightProbes;
     }
 
-    public Vector3 ComputeCurrentValue(List<Vector3> currentEvaluationResults) {
-        Vector3 evaluationRGB = new Vector3(0, 0, 0);
-        for (int j = 0; j < currentEvaluationResults.Count; j++) {
-            evaluationRGB += currentEvaluationResults[j];
+    Color RGB2YCoCg(Color rgbColor) {
+        return new Color(
+         rgbColor.r * 0.25f + rgbColor.g * 0.5f + rgbColor.b * 0.25f,
+         rgbColor.r * 0.5f - rgbColor.b * 0.5f,
+        -rgbColor.r * 0.25f + rgbColor.g * 0.5f - rgbColor.b * 0.25f);
+    }
+
+    public Vector3 YCoCgMetric(Color value, Color reference, Color weights) {
+        Color ycocg_value = RGB2YCoCg(value);
+        Color ycocg_reference = RGB2YCoCg(reference);
+        return new Vector3(
+            (value.r - reference.r) * weights.r,
+            (value.g - reference.g) * weights.g,
+            (value.b - reference.b) * weights.b);
+    }
+
+    public Vector3 YCoCgHighMetric(Color value, Color reference) {
+        Color weights = new Color(0.1f, 0.45f, 0.45f);
+        return YCoCgMetric(value, reference, weights);
+    }
+    public Vector3 YCoCgLowMetric(Color value, Color reference) {
+        Color weights = new Color(0.5f, 0.25f, 0.25f);
+        return YCoCgMetric(value, reference, weights);
+    }
+
+    public Vector3 RGBMetric(Color value, Color reference) {
+        return new Vector3(value.r - reference.r, value.g - reference.g, value.b - reference.b);
+    }
+
+    private delegate Vector3 MetricCallback(Color value, Color reference);
+
+    private MetricCallback GetMetricCallback() {
+        if (EvaluationMetric == LightEvaluationMetric.RGB) {
+            return RGBMetric;
+        } else if (EvaluationMetric == LightEvaluationMetric.Chrominance) {
+            return YCoCgHighMetric;
+        } else if (EvaluationMetric == LightEvaluationMetric.Luminance) {
+            return YCoCgLowMetric;
         }
-        evaluationRGB /= currentEvaluationResults.Count;
-        return evaluationRGB;
-    }
-    public float RGBToFloat(Vector3 value) {
-        return (value.x + value.y + value.z) * 0.333f;
-    }
-    public float SquareError(Vector3 value, Vector3 reference) {
-        float res = RGBToFloat(value) - RGBToFloat(reference);
-        return res * res;
+        return null;
     }
 
-    public float AbsoluteError(Vector3 value, Vector3 reference) {
-        return Mathf.Abs(RGBToFloat(value) - RGBToFloat(reference));
+    public float SquareError(Color value, Color reference) {
+        Vector3 res = RGBMetric(value, reference);
+        return Vector3.Dot(res, res);
     }
 
-    private delegate float SolverCallback(Vector3 value, Vector3 reference);
+    public float AbsoluteError(Color value, Color reference) {
+        Vector3 res = RGBMetric(value, reference);
+        return Mathf.Abs(res.x) + Mathf.Abs(res.y) + Mathf.Abs(res.z);
+    }
+
+    private delegate float SolverCallback(Color value, Color reference);
 
     private SolverCallback GetSolverCallback() {
         if (EvaluationSolver == LightProbesSolver.Absolute) {
@@ -199,12 +232,12 @@ class Evaluator {
         return null;
     }
 
-    public float ComputeCurrentCost(List<Vector3> estimates, List<Vector3> reference) {
+    public float ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
         float cost = 0.0f;
         for (int j = 0; j < estimates.Count; j++) {
             cost += EvaluationSolverCallback(estimates[j], reference[j]);
         }
-        cost /= estimates.Count;
+        cost /= (estimates.Count * 3);
         return cost;
     }
 
@@ -212,7 +245,7 @@ class Evaluator {
         evaluationResults = EvaluatePoints(bakedprobes, evalPositions);
     }
 
-    public List<Vector3> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
+    public List<Color> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
         int directionsCount;
         Vector3[] directions;
 
@@ -226,7 +259,7 @@ class Evaluator {
         Color[] evaluationResultsPerDir = new Color[directionsCount];
 
         int j = 0;
-        List<Vector3> currentEvaluationResults = new List<Vector3>(evalPositions.Count);
+        List<Color> currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
         foreach (Vector3 pos in evalPositions) {
             SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
             if (evaluationTetrahedron[j] == -1) {
@@ -236,14 +269,14 @@ class Evaluator {
             }
             sh2.Evaluate(directions, evaluationResultsPerDir);
 
-            Vector3 uniformSampledEvaluation = new Vector3(0, 0, 0);
-            for (int i = 0; i < directionsCount; i++) {
-                uniformSampledEvaluation.x += evaluationResultsPerDir[i].r;
-                uniformSampledEvaluation.y += evaluationResultsPerDir[i].g;
-                uniformSampledEvaluation.z += evaluationResultsPerDir[i].b;
-            }
-            uniformSampledEvaluation /= directionsCount;
-            currentEvaluationResults.Add(uniformSampledEvaluation);
+            //Vector3 uniformSampledEvaluation = new Vector3(0, 0, 0);
+            //for (int i = 0; i < directionsCount; i++) {
+            //    uniformSampledEvaluation.x += evaluationResultsPerDir[i].r;
+            //    uniformSampledEvaluation.y += evaluationResultsPerDir[i].g;
+            //    uniformSampledEvaluation.z += evaluationResultsPerDir[i].b;
+            //}
+            //uniformSampledEvaluation /= directionsCount;
+            currentEvaluationResults.AddRange(evaluationResultsPerDir);
             j++;
         }
         return currentEvaluationResults;
@@ -264,7 +297,7 @@ class Evaluator {
         float   currentEvaluationError          = 0.0f;
         int     iteration                       = 0;
         int     remaining_probes                = terminationCurrentLightProbes;
-        bool    is_stochastic                   = false;
+        bool    is_stochastic                   = true;
 
         LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
 
@@ -288,16 +321,14 @@ class Evaluator {
             float   decimatedCostMin    = float.MaxValue;
 
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
-            Vector3 last_position_removed = new Vector3();
-            SphericalHarmonicsL2 last_SH_removed = new SphericalHarmonicsL2();
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                last_position_removed = finalPositionsDecimated[random_index];
+                Vector3 last_position_removed = finalPositionsDecimated[random_index];
                 finalPositionsDecimated.RemoveAt(random_index);
-                last_SH_removed = finalLightProbesDecimated[random_index];
+                SphericalHarmonicsL2 last_SH_removed = finalLightProbesDecimated[random_index];
                 finalLightProbesDecimated.RemoveAt(random_index);
                 stopwatch.Stop();
                 step1 += stopwatch.ElapsedMilliseconds;
@@ -312,7 +343,7 @@ class Evaluator {
 
                 // 3. Evaluate
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                List<Vector3> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints);
+                List<Color> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step3 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -328,7 +359,6 @@ class Evaluator {
                 if (decimatedCost < decimatedCostMin) {
                     decimatedIndex           = i;
                     decimatedCostMin         = decimatedCost;
-                    evaluationTotalDecimated = RGBToFloat(ComputeCurrentValue(currentEvaluationResults));
                 }
                 step5 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
