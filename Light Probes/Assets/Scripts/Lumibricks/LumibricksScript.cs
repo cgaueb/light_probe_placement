@@ -268,7 +268,7 @@ public class LumibricksScript : MonoBehaviour
         Lightmapping.BakeAsync();
     }
 
-    public void RemoveInvalidLightProbes() {
+    public void RemoveInvalidLightProbes(bool executeAll) {
         LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
 
         // Remove Dark Probes to discard invisible or ones that are hidden inside geometry
@@ -295,7 +295,13 @@ public class LumibricksScript : MonoBehaviour
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
 
-        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
+        if (executeAll) {
+            int user_selected_probes = m_evaluator.terminationCurrentLightProbes;
+            m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
+            m_evaluator.terminationCurrentLightProbes = Mathf.Clamp(user_selected_probes, m_evaluator.terminationMinLightProbes, m_evaluator.terminationMaxLightProbes);
+        } else {
+            m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
+        }
     }
 
     public void RemoveInvalidEvaluationPoints() {
@@ -328,7 +334,7 @@ public class LumibricksScript : MonoBehaviour
     public void DecimateLightProbes(bool executeAll) {
         if (executeAll) {
             Lightmapping.Bake();
-            RemoveInvalidLightProbes();
+            RemoveInvalidLightProbes(executeAll) ;
             MapEvaluationPointsToLightProbes();
             RemoveInvalidEvaluationPoints();
             EvaluateEvaluationPoints();

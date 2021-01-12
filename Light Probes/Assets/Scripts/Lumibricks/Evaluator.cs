@@ -69,6 +69,7 @@ class Evaluator {
     public float evaluationTotalDecimated = 0.0f;
     public float terminationEvaluationError = 0.0f;
     public int terminationMinLightProbes = 0;
+    public int terminationCurrentLightProbes = 0;
     public int terminationMaxLightProbes = 0;
 
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
@@ -82,10 +83,10 @@ class Evaluator {
         EvaluationType = LightProbesEvaluationType.FixedHigh;
     }
 
-    public void ResetLightProbeData(int probesCount) {
-        //terminationMinLightProbes = probesCount-1;
-        terminationMinLightProbes = Mathf.Max(probesCount / 2, 4);
-        terminationMaxLightProbes = probesCount - 1;
+    public void ResetLightProbeData(int maxProbes) {
+        terminationMinLightProbes = 4;
+        terminationMaxLightProbes = maxProbes;
+        terminationCurrentLightProbes = Mathf.Clamp((terminationMaxLightProbes - terminationMinLightProbes) / 2, terminationMinLightProbes, terminationMaxLightProbes);
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();
@@ -136,7 +137,7 @@ class Evaluator {
         }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
-        terminationMinLightProbes  = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationMinLightProbes, 4, terminationMaxLightProbes);
+        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
 
         GUILayout.BeginHorizontal();
@@ -262,7 +263,7 @@ class Evaluator {
         float   maxError                        = 0.1f;
         float   currentEvaluationError          = 0.0f;
         int     iteration                       = 0;
-        int     remaining_probes                = terminationMinLightProbes;
+        int     remaining_probes                = terminationCurrentLightProbes;
         bool    is_stochastic                   = false;
 
         LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
@@ -278,7 +279,7 @@ class Evaluator {
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
         
-        while (currentEvaluationError < maxError && remaining_probes <= finalPositionsDecimated.Count) {
+        while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. Done

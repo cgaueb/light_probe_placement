@@ -290,7 +290,7 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 0f);
-            script.RemoveInvalidLightProbes();
+            script.RemoveInvalidLightProbes(false);
             EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 1f);
         }
         stopwatch.Stop();
