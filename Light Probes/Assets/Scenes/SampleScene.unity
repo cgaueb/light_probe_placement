@@ -98,8 +98,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 112000000, guid: 6cc8154d3a733034ea5d3b7d0ff842cb,
-    type: 2}
+  m_LightingDataAsset: {fileID: 0}
   m_LightingSettings: {fileID: 4890085278179872738, guid: 8b392994a6f6db949982aff0109dc838,
     type: 2}
 --- !u!196 &4
@@ -1900,7 +1899,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd1321a8be773a94aaf073b4108b359d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  evaluationRandomSamplingCount: 50
-  terminationMinLightProbes: 8
-  terminationMaxLightProbes: 8
-  terminationEvaluationError: 0
+  sceneVolumeLP: {fileID: 0}
+  sceneVolumeEP: {fileID: 0}
