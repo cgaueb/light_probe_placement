@@ -319,7 +319,9 @@ public class LumibricksScript : MonoBehaviour
             if (invalidPoints[i]) {
                 ++count;
                 Transform epTransform = evaluationObjectParent.transform.Find("Evaluation Point " + i.ToString());
-                DestroyImmediate(epTransform.gameObject);
+                if (epTransform) {
+                    DestroyImmediate(epTransform.gameObject);
+                }
                 currentEvaluationPointsGenerator.Positions.RemoveAt(i);
                 continue;
             }
