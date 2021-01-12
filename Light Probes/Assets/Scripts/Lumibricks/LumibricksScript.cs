@@ -464,6 +464,10 @@ public class LumibricksScript : MonoBehaviour
         obj.transform.parent = parenttobject.transform;
         obj.SetActive(true);
         obj.name = "Evaluation Point " + index.ToString();
+        Collider collider = obj.GetComponent<Collider>();
+        if (collider != null) {
+            collider.enabled = false;
+        }
     }
     
     #endregion
