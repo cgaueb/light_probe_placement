@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -69,6 +69,9 @@ class Evaluator {
     public Vector3[] tetrahedralizePositions;
     public List<int> evaluationTetrahedron;
 
+public List<bool>       evaluationTetrahedronChanged;
+public List<List<int>>  mappingEPtoLP;
+
     // evaluation
     public List<Color> evaluationResults; 
     public float evaluationError = 0.0f;
@@ -115,6 +118,8 @@ class Evaluator {
     public void ResetEvaluationData() {
         evaluationResults = null;
         evaluationTetrahedron = null;
+evaluationTetrahedronChanged = null;
+mappingEPtoLP = null;
         evaluationRandomDirections = new List<Vector3>();
         evaluationTotal = 0.0f;
     }
@@ -270,10 +275,10 @@ class Evaluator {
     }
 
     public void EvaluateReferencePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
-        evaluationResults = EvaluatePoints(bakedprobes, evalPositions);
+        evaluationResults = EvaluatePoints(bakedprobes, evalPositions, null);
     }
 
-    public List<Color> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
+    public List<Color> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions, List<Vector3> oldEvaluationResults) {
         int directionsCount;
         Vector3[] directions;
 
@@ -295,24 +300,46 @@ class Evaluator {
             currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
         }
         foreach (Vector3 pos in evalPositions) {
-            SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
+
+            Vector3 uniformSampledEvaluation = new Vector3(0, 0, 0);
             if (evaluationTetrahedron[j] == -1) {
-                sh2.Clear();
-            } else {
-                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+                
             }
-            sh2.Evaluate(directions, evaluationResultsPerDir);
-            if (is_avg) {
-                Color uniformSampledEvaluation = new Color(0, 0, 0);
-                for (int i = 0; i < directionsCount; i++) {
-                    uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
-                    uniformSampledEvaluation.g += evaluationResultsPerDir[i].g;
-                    uniformSampledEvaluation.b += evaluationResultsPerDir[i].b;
+            else if(evaluationTetrahedronChanged[j])
+            {
+                SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
+                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+                sh2.Evaluate(directions, evaluationResultsPerDir);
+                if (is_avg) {
+                    Color uniformSampledEvaluation = new Color(0, 0, 0);
+                    for (int i = 0; i < directionsCount; i++) {
+                        uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
+                        uniformSampledEvaluation.g += evaluationResultsPerDir[i].g;
+                        uniformSampledEvaluation.b += evaluationResultsPerDir[i].b;
+                    }
+                    uniformSampledEvaluation /= directionsCount;
+                    currentEvaluationResults.Add(uniformSampledEvaluation);
+                } else {
+                    currentEvaluationResults.AddRange(evaluationResultsPerDir);
                 }
-                uniformSampledEvaluation /= directionsCount;
-                currentEvaluationResults.Add(uniformSampledEvaluation);
-            } else {
-                currentEvaluationResults.AddRange(evaluationResultsPerDir);
+            }
+            else{
+                SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
+                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+                sh2.Evaluate(directions, evaluationResultsPerDir);
+                if (is_avg) {
+                    Color uniformSampledEvaluation = new Color(0, 0, 0);
+                    for (int i = 0; i < directionsCount; i++) {
+                        uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
+                        uniformSampledEvaluation.g += evaluationResultsPerDir[i].g;
+                        uniformSampledEvaluation.b += evaluationResultsPerDir[i].b;
+                    }
+                    uniformSampledEvaluation /= directionsCount;
+                    currentEvaluationResults.Add(uniformSampledEvaluation);
+                } else {
+                    currentEvaluationResults.AddRange(evaluationResultsPerDir);
+                }
+//uniformSampledEvaluation = new Vector3(oldEvaluationResults[j].x, oldEvaluationResults[j].y, oldEvaluationResults[j].z);
             }
             j++;
         }
@@ -357,6 +384,8 @@ class Evaluator {
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
         
+List<Vector3> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+
         while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
@@ -366,11 +395,13 @@ class Evaluator {
             float   decimatedCostMin    = float.MaxValue;
 
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
+
+List<Vector3> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
-                stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 Vector3 last_position_removed = finalPositionsDecimated[random_index];
                 finalPositionsDecimated.RemoveAt(random_index);
                 SphericalHarmonicsL2 last_SH_removed = finalLightProbesDecimated[random_index];
@@ -388,7 +419,13 @@ class Evaluator {
 
                 // 3. Evaluate
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                List<Color> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints);
+
+// evaluate only the points that have been changed
+//evaluationTetrahedronChanged = new List<bool>(new bool[evaluationPoints.Count]);
+//foreach (int j in mappingEPtoLP[random_index])
+  //  evaluationTetrahedronChanged[j] = true;
+
+                List<Vector3> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints, prevEvaluationResults);
                 stopwatch.Stop();
                 step3 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -404,6 +441,11 @@ class Evaluator {
                 if (decimatedCost < decimatedCostMin) {
                     decimatedIndex           = i;
                     decimatedCostMin         = decimatedCost;
+                    evaluationTotalDecimated = RGBToFloat(ComputeCurrentValue(currentEvaluationResults));
+
+//decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+//foreach (int j in mappingEPtoLP[random_index])
+  //    decimatedEvaluationResults[j] = new Vector3(currentEvaluationResults[j].x, currentEvaluationResults[j].y, currentEvaluationResults[j].z);
                 }
                 step5 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -548,25 +590,39 @@ class Evaluator {
 
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int mapped = 0;
-        Vector3[] tetrahedronPositions;
+
+evaluationTetrahedronChanged = new List<bool>(evalPositions.Count);
+mappingEPtoLP = new List<List<int>>(probePositions.Count);
+for (int j = 0; j < probePositions.Count; j++) {
+    mappingEPtoLP.Add(new List<int>());
+}
+
+        int             tetrahedronCount         = tetrahedralizeIndices.Length/4;
+        Vector3[]       tetrahedronPositions;
+        List<Vector3[]> tetrahedronPositionsList = new List<Vector3[]>(tetrahedronCount);
+        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++){
+            GetTetrahedronPositions(tetrahedronIndex, out tetrahedronPositions);
+            tetrahedronPositionsList.Add(tetrahedronPositions);
+        }
+
         evaluationTetrahedron = new List<int>(evalPositions.Count);
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
             evaluationTetrahedron.Add(-1);
+evaluationTetrahedronChanged.Add(true);
 
-            Vector3 evaluationPosition = evalPositions[evaluationPositionIndex];
             // 1. Relate Evaluation Point with one Tetrahedron
-            for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedralizeIndices.Length / 4; tetrahedronIndex++) {
-                GetTetrahedronPositions(tetrahedronIndex, out tetrahedronPositions);
-                if (IsInsideTetrahedronWeights(tetrahedronPositions, evaluationPosition)) {
+            for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
+                if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
+
+mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 0]].Add(evaluationPositionIndex);
+mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 1]].Add(evaluationPositionIndex);
+mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 2]].Add(evaluationPositionIndex);
+mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 3]].Add(evaluationPositionIndex);
+
                     evaluationTetrahedron[evaluationPositionIndex] = tetrahedronIndex;
                     mapped++;
                     break;
                 }
-            }
-            if (evaluationTetrahedron[evaluationPositionIndex] < 0) {
-                //LumiLogger.Logger.LogWarning("Could not map EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString() + " to any tetrahedron");
-            } else {
-                //LumiLogger.Logger.Log("Mapped EP " + evaluationPositionIndex.ToString() + ": " + evaluationPosition.ToString());
             }
         }
         stopwatch.Stop();
