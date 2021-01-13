@@ -497,9 +497,44 @@ class Evaluator {
     long tetr = 0;
     long mapping = 0;
 
-    public int MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
-        return MapEvaluationPointsToLightProbes(probePositions, evalPositions);
+    public void MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
+        
+        System.Diagnostics.Stopwatch stopwatch;
+        stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        Lightmapping.Tetrahedralize(probePositions.ToArray(), out tetrahedralizeIndices, out tetrahedralizePositions);
+        stopwatch.Stop();
+        tetr += stopwatch.ElapsedMilliseconds;
+
+        if (probePositions.Count != tetrahedralizePositions.Length) {
+            LumiLogger.Logger.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
+        }
+
+        stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        int             tetrahedronCount         = tetrahedralizeIndices.Length/4;
+        Vector3[]       tetrahedronPositions;
+        List<Vector3[]> tetrahedronPositionsList = new List<Vector3[]>(tetrahedronCount);
+        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++){
+            GetTetrahedronPositions(tetrahedronIndex, out tetrahedronPositions);
+            tetrahedronPositionsList.Add(tetrahedronPositions);
+        }
+
+        evaluationTetrahedron = new List<int>(evalPositions.Count);
+        for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
+            evaluationTetrahedron.Add(-1);
+
+            // 1. Relate Evaluation Point with one Tetrahedron
+            for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
+                if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
+                    evaluationTetrahedron[evaluationPositionIndex] = tetrahedronIndex;
+                    break;
+                }
+            }
+        }
+        stopwatch.Stop();
+        mapping += stopwatch.ElapsedMilliseconds;
     }
+
     public int MapEvaluationPointsToLightProbes(List<Vector3> probePositions, List<Vector3> evalPositions) {
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
