@@ -276,7 +276,13 @@ class Evaluator {
         Color[] evaluationResultsPerDir = new Color[directionsCount];
 
         int j = 0;
-        List<Color> currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
+        bool is_avg = false;
+        List<Color> currentEvaluationResults;
+        if (is_avg) {
+            currentEvaluationResults = new List<Color>(evalPositions.Count);
+        } else {
+            currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
+        }
         foreach (Vector3 pos in evalPositions) {
             SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
             if (evaluationTetrahedron[j] == -1) {
@@ -285,15 +291,18 @@ class Evaluator {
                 GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
             }
             sh2.Evaluate(directions, evaluationResultsPerDir);
-
-            //Vector3 uniformSampledEvaluation = new Vector3(0, 0, 0);
-            //for (int i = 0; i < directionsCount; i++) {
-            //    uniformSampledEvaluation.x += evaluationResultsPerDir[i].r;
-            //    uniformSampledEvaluation.y += evaluationResultsPerDir[i].g;
-            //    uniformSampledEvaluation.z += evaluationResultsPerDir[i].b;
-            //}
-            //uniformSampledEvaluation /= directionsCount;
-            currentEvaluationResults.AddRange(evaluationResultsPerDir);
+            if (is_avg) {
+                Color uniformSampledEvaluation = new Color(0, 0, 0);
+                for (int i = 0; i < directionsCount; i++) {
+                    uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
+                    uniformSampledEvaluation.g += evaluationResultsPerDir[i].g;
+                    uniformSampledEvaluation.b += evaluationResultsPerDir[i].b;
+                }
+                uniformSampledEvaluation /= directionsCount;
+                currentEvaluationResults.Add(uniformSampledEvaluation);
+            } else {
+                currentEvaluationResults.AddRange(evaluationResultsPerDir);
+            }
             j++;
         }
         return currentEvaluationResults;
