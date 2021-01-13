@@ -105,7 +105,7 @@ class Evaluator {
     public void ResetLightProbeData(int maxProbes) {
         terminationMinLightProbes = 4;
         terminationMaxLightProbes = maxProbes;
-        terminationCurrentLightProbes = Mathf.Clamp((terminationMaxLightProbes - terminationMinLightProbes) / 2, terminationMinLightProbes, terminationMaxLightProbes);
+        terminationCurrentLightProbes = Mathf.Clamp((terminationMaxLightProbes - terminationMinLightProbes) / 4, terminationMinLightProbes, terminationMaxLightProbes);
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();
