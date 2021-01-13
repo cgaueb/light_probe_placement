@@ -580,7 +580,7 @@ class Evaluator {
                 PointPlaneSameSide(v[3], v[0], v[1], v[2], p);
     }
 
-    Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p) {
+    Vector4 GetTetrahedronWeights_SLOW(Vector3[] v, Vector3 p) {
         Matrix4x4 mat = Matrix4x4.identity;
         mat.SetColumn(0, v[0] - v[3]);
         mat.SetColumn(1, v[1] - v[3]);
@@ -590,6 +590,35 @@ class Evaluator {
         weights.w = 1 - weights.x - weights.y - weights.z;
         return weights;
     }
+
+    float ScTP(Vector3 a, Vector3 b, Vector3 c) {
+        return Vector3.Dot(a, Vector3.Cross(b, c));
+    }
+
+    Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p) {
+        Vector3 vap = p    - v[0];
+        Vector3 vbp = p    - v[1];
+        Vector3 vab = v[1] - v[0];
+        Vector3 vac = v[2] - v[0];
+        Vector3 vad = v[3] - v[0];
+        Vector3 vbc = v[2] - v[1];
+        Vector3 vbd = v[3] - v[1];
+
+        // ScTP computes the scalar triple product
+        float va6 = ScTP(vbp, vbd, vbc);
+        float vb6 = ScTP(vap, vac, vad);
+        float vc6 = ScTP(vap, vad, vab);
+        float vd6 = ScTP(vap, vab, vac);
+        float v6  = 1 / ScTP(vab, vac, vad);
+
+        float w1  = va6*v6;
+        float w2  = vb6*v6;
+        float w3  = vc6*v6;
+        float w4  = 1 - w1 - w2 -w3;
+
+        return new Vector4(w1, w2, w3, w4);
+    }
+
     bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p) {
         Vector4 weights = GetTetrahedronWeights(v, p);
         return weights.x >= 0 && weights.y >= 0 && weights.z >= 0 && weights.w >= 0;
