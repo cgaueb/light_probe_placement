@@ -24,7 +24,7 @@ class Evaluator {
         Luminance
     }
 
-    readonly List<Vector3> evaluationFixedDirections = new List<Vector3> { 
+    List<Vector3> evaluationFixedDirections = new List<Vector3> { 
         // LOW  (6)
         new Vector3( 1.0f, 0.0f, 0.0f),
         new Vector3(-1.0f, 0.0f, 0.0f),
@@ -85,6 +85,17 @@ class Evaluator {
 
 
     GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
+
+    #region Constructor Functions
+    public Evaluator() {
+        LumiLogger.Logger.Log("Evaluator Constructor");
+        for (int i = 0; i < evaluationFixedDirections.Count; ++i) {
+            Vector3 v1 = evaluationFixedDirections[i];
+            v1.Normalize();
+            evaluationFixedDirections[i] = v1;
+        }
+    }
+    #endregion
 
     public void Reset(int probesCount) {
         ResetLightProbeData(probesCount);
@@ -505,13 +516,13 @@ class Evaluator {
     public void GenerateUniformSphereSampling() {
         evaluationRandomDirections.Clear();
         for (int i = 0; i < evaluationRandomSamplingCount; i++) {
-            float z = 2.0f * UnityEngine.Random.Range(0.0f, 1.0f) - 1.0f;
-            float phi = 2.0f * Mathf.PI * UnityEngine.Random.Range(0.0f, 1.0f);
-            float r = Mathf.Sqrt(1.0f - z * z);
-            float x = r * Mathf.Cos(phi);
-            float y = r * Mathf.Sin(phi);
-
-            evaluationRandomDirections.Add(new Vector3(x, y, z));
+            Vector2 r = new Vector2(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f));
+            float phi = r.x * 2.0f * Mathf.PI;
+            float cosTheta = 1.0f - 2.0f * r.y;
+            float sinTheta = Mathf.Sqrt(1.0f - cosTheta * cosTheta);
+            Vector3 vec = new Vector3(Mathf.Cos(phi) * sinTheta, Mathf.Sin(phi) * sinTheta, cosTheta);
+            vec.Normalize();
+            evaluationRandomDirections.Add(vec);
         }
     }
     void GetTetrahedronPositions(int j, out Vector3[] tetrahedronPositions) {
