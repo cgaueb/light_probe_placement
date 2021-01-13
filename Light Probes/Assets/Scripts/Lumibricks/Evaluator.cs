@@ -433,9 +433,9 @@ class Evaluator {
         LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00"));
         LumiLogger.Logger.Log("1. Remove LP: " + step1 / 1000.0 + "s");
         LumiLogger.Logger.Log("2. Remap EPs: " + step2 / 1000.0 + "s");
+        LumiLogger.Logger.Log("2.1 Tetrahed: " + tetr / 1000.0 + "s");
+        LumiLogger.Logger.Log("2.2 Mappings: " + mapping / 1000.0 + "s");
         LumiLogger.Logger.Log("3. Eval  EPs: " + step3 / 1000.0 + "s");
-        LumiLogger.Logger.Log("3.1 Tetrahed: " + tetr / 1000.0 + "s");
-        LumiLogger.Logger.Log("3.2 Mappings: " + mapping / 1000.0 + "s");
         LumiLogger.Logger.Log("4. Calc Cost: " + step4 / 1000.0 + "s");
         LumiLogger.Logger.Log("5. Find Min : " + step5 / 1000.0 + "s");
         LumiLogger.Logger.Log("6. Insert LP: " + step6 / 1000.0 + "s");
