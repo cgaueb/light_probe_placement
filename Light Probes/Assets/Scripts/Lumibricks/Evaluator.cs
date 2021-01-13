@@ -180,33 +180,39 @@ class Evaluator {
         return clickedDecimateLightProbes;
     }
 
-    Color RGB2YCoCg(Color rgbColor) {
+    private delegate Color ColorCallback(Color value);
+    private Color RGB(Color rgbColor) {
+        return rgbColor;
+    }
+
+    private Color RGB2YCoCg(Color rgbColor) {
         return new Color(
          rgbColor.r * 0.25f + rgbColor.g * 0.5f + rgbColor.b * 0.25f,
          rgbColor.r * 0.5f - rgbColor.b * 0.5f,
         -rgbColor.r * 0.25f + rgbColor.g * 0.5f - rgbColor.b * 0.25f);
     }
 
-    public Vector3 YCoCgMetric(Color value, Color reference, Color weights) {
-        Color ycocg_value = RGB2YCoCg(value);
-        Color ycocg_reference = RGB2YCoCg(reference);
+    private Vector3 WeightedMetric(ColorCallback colorCallback, Color value, Color reference, Color weights) {
+        Color ycocg_value = colorCallback(value);
+        Color ycocg_reference = colorCallback(reference);
         return new Vector3(
-            (value.r - reference.r) * weights.r,
-            (value.g - reference.g) * weights.g,
-            (value.b - reference.b) * weights.b);
+            (ycocg_value.r - ycocg_reference.r) * weights.r,
+            (ycocg_value.g - ycocg_reference.g) * weights.g,
+            (ycocg_value.b - ycocg_reference.b) * weights.b);
     }
 
-    public Vector3 YCoCgHighMetric(Color value, Color reference) {
+    private Vector3 YCoCgHighMetric(Color value, Color reference) {
         Color weights = new Color(0.1f, 0.45f, 0.45f);
-        return YCoCgMetric(value, reference, weights);
+        return WeightedMetric(RGB2YCoCg, value, reference, weights);
     }
-    public Vector3 YCoCgLowMetric(Color value, Color reference) {
+    private Vector3 YCoCgLowMetric(Color value, Color reference) {
         Color weights = new Color(0.5f, 0.25f, 0.25f);
-        return YCoCgMetric(value, reference, weights);
+        return WeightedMetric(RGB2YCoCg, value, reference, weights);
     }
 
-    public Vector3 RGBMetric(Color value, Color reference) {
-        return new Vector3(value.r - reference.r, value.g - reference.g, value.b - reference.b);
+    private Vector3 RGBMetric(Color value, Color reference) {
+        Color weights = new Color(0.33f, 0.33f, 0.33f);
+        return WeightedMetric(RGB, value, reference, weights);
     }
 
     private delegate Vector3 MetricCallback(Color value, Color reference);
@@ -248,7 +254,7 @@ class Evaluator {
         for (int j = 0; j < estimates.Count; j++) {
             cost += EvaluationSolverCallback(estimates[j], reference[j]);
         }
-        cost /= (estimates.Count * 3);
+        cost /= (estimates.Count);
         return cost;
     }
 
