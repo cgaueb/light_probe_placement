@@ -14,8 +14,9 @@ class Evaluator {
 
     public enum LightProbesSolver
     {
-        Absolute,
-        LeastSquares
+        L1Norm,
+        L2Norm,
+        L2NormSquared
     }
     public enum LightEvaluationMetric
     {
@@ -78,7 +79,7 @@ class Evaluator {
     public int terminationMaxLightProbes = 0;
 
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
-    public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.LeastSquares;
+    public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.L1Norm;
     private SolverCallback EvaluationSolverCallback = null;
     public LightEvaluationMetric EvaluationMetric { get; set; } = LightEvaluationMetric.RGB;
     private MetricCallback EvaluationMetricCallback = null;
@@ -229,22 +230,27 @@ class Evaluator {
     }
 
     public float SquareError(Color value, Color reference) {
-        Vector3 res = RGBMetric(value, reference);
-        return Vector3.Dot(res, res);
+        Vector3 res = EvaluationMetricCallback(value, reference);
+        return Mathf.Sqrt(Vector3.Dot(res, res));
+    }
+    public float SquareSquareError(Color value, Color reference) {
+        return Mathf.Sqrt(SquareError(value, reference));
     }
 
     public float AbsoluteError(Color value, Color reference) {
-        Vector3 res = RGBMetric(value, reference);
+        Vector3 res = EvaluationMetricCallback(value, reference);
         return Mathf.Abs(res.x) + Mathf.Abs(res.y) + Mathf.Abs(res.z);
     }
 
     private delegate float SolverCallback(Color value, Color reference);
 
     private SolverCallback GetSolverCallback() {
-        if (EvaluationSolver == LightProbesSolver.Absolute) {
+        if (EvaluationSolver == LightProbesSolver.L1Norm) {
             return AbsoluteError;
-        } else if (EvaluationSolver == LightProbesSolver.LeastSquares) {
+        } else if (EvaluationSolver == LightProbesSolver.L2Norm) {
             return SquareError;
+        } else if (EvaluationSolver == LightProbesSolver.L2NormSquared) {
+            return SquareSquareError;
         }
         return null;
     }
@@ -276,7 +282,7 @@ class Evaluator {
         Color[] evaluationResultsPerDir = new Color[directionsCount];
 
         int j = 0;
-        bool is_avg = false;
+        bool is_avg = true;
         List<Color> currentEvaluationResults;
         if (is_avg) {
             currentEvaluationResults = new List<Color>(evalPositions.Count);
@@ -307,7 +313,7 @@ class Evaluator {
         }
         return currentEvaluationResults;
     }
-    public List<Vector3> DecimateBakedLightProbes(List<Vector3> evaluationPoints, List<Vector3> posIn, List<SphericalHarmonicsL2> bakedProbes) {
+    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, List<Vector3> evaluationPoints, List<Vector3> posIn, List<SphericalHarmonicsL2> bakedProbes) {
         // TODO: add iterate
         // TODO: optimize, e.g. stochastic
         // TODO: modify cost function
@@ -323,9 +329,17 @@ class Evaluator {
         float   currentEvaluationError          = 0.0f;
         int     iteration                       = 0;
         int     remaining_probes                = terminationCurrentLightProbes;
-        bool    is_stochastic                   = true;
+        bool    is_stochastic                   = false;
+        int     num_stochastic_samples          = 20;
 
         LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
+        LumiLogger.Logger.Log("Settings: " +
+            "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
+            ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
+            ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
+            ", Solver: " + EvaluationSolver.ToString() +
+            ", Metric: " + EvaluationMetric.ToString());
+
 
         long totalms = 0;
         long step1 = 0;
@@ -346,7 +360,7 @@ class Evaluator {
             int     decimatedIndex      = -1;
             float   decimatedCostMin    = float.MaxValue;
 
-            int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(10, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
+            int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();

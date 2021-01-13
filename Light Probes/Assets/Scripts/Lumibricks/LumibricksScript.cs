@@ -29,7 +29,7 @@ public class LumibricksScript : MonoBehaviour
     Bounds sceneVolumeEPBounds;
     Material EPMaterial = null;
 
-    Evaluator m_evaluator = new Evaluator();
+    Evaluator m_evaluator = null;
 
     List<SphericalHarmonicsL2> LightProbesBakedProbes = null;
 
@@ -49,6 +49,7 @@ public class LumibricksScript : MonoBehaviour
     #region Constructor Functions
     public LumibricksScript() {
         LumiLogger.Logger.Log("Lumi Script Constructor");
+        m_evaluator = new Evaluator();
     }
     #endregion
 
@@ -343,7 +344,7 @@ public class LumibricksScript : MonoBehaviour
         }
 
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
-        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
+        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(this, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
 
         LumiLogger.Logger.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes, " + currentLightProbesGenerator.TotalNumProbesSimplified + " left");
