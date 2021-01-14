@@ -295,9 +295,12 @@ mappingEPtoLP = null;
             currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
         }
         foreach (Vector3 pos in evalPositions) {
-
             if (evaluationTetrahedron[j] == -1) {
-                
+                if (is_avg) {
+                    currentEvaluationResults.Add(new Color(0, 0, 0));
+                } else {
+                    currentEvaluationResults.AddRange(new Color[directionsCount]);
+                }
             }
             else if(evaluationTetrahedronChanged[j])
             {
