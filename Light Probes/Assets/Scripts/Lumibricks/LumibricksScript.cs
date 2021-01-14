@@ -339,7 +339,7 @@ public class LumibricksScript : MonoBehaviour
             Lightmapping.Bake();
             RemoveInvalidLightProbes(executeAll) ;
             MapEvaluationPointsToLightProbes();
-            RemoveInvalidEvaluationPoints();
+            //RemoveInvalidEvaluationPoints();
             EvaluateEvaluationPoints();
         }
 
