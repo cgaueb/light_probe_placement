@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -166,7 +166,7 @@ mappingEPtoLP = null;
         GUILayout.FlexibleSpace();
         bool clickedDecimateLightProbes = false;
         if (executeAll) {
-            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer (needs Bake first)", "Optimizes light probes"), defaultOption);
+            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer", "Optimizes light probes"), defaultOption);
         } else {
             clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), defaultOption);
         }
