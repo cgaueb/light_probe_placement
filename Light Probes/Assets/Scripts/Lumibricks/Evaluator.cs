@@ -153,11 +153,6 @@ mappingEPtoLP = null;
     public bool populateGUI_LightProbesDecimated(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
         if (executeAll) {
             populateGUI_EvaluateDirections();
-
-            if (evaluationResults != null) {
-               Vector3 evaluationRGB = ComputeCurrentValue(evaluationResults);
-               evaluationTotal = RGBToFloat(evaluationRGB);
-            }
         }
         EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
         EvaluationSolverCallback = GetSolverCallback();
@@ -278,7 +273,7 @@ mappingEPtoLP = null;
         evaluationResults = EvaluatePoints(bakedprobes, evalPositions, null);
     }
 
-    public List<Color> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions, List<Vector3> oldEvaluationResults) {
+    public List<Color> EvaluatePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions, List<Color> oldEvaluationResults) {
         int directionsCount;
         Vector3[] directions;
 
@@ -301,7 +296,6 @@ mappingEPtoLP = null;
         }
         foreach (Vector3 pos in evalPositions) {
 
-            Vector3 uniformSampledEvaluation = new Vector3(0, 0, 0);
             if (evaluationTetrahedron[j] == -1) {
                 
             }
@@ -339,7 +333,7 @@ mappingEPtoLP = null;
                 } else {
                     currentEvaluationResults.AddRange(evaluationResultsPerDir);
                 }
-//uniformSampledEvaluation = new Vector3(oldEvaluationResults[j].x, oldEvaluationResults[j].y, oldEvaluationResults[j].z);
+//uniformSampledEvaluation = new Color(oldEvaluationResults[j].r, oldEvaluationResults[j].g, oldEvaluationResults[j].b);
             }
             j++;
         }
@@ -384,7 +378,7 @@ mappingEPtoLP = null;
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
         
-List<Vector3> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
 
         while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
@@ -396,7 +390,7 @@ List<Vector3> decimatedEvaluationResults = evaluationResults.ConvertAll(res => n
 
             int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
 
-List<Vector3> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+List<Color> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
 
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
@@ -425,7 +419,7 @@ List<Vector3> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res 
 //foreach (int j in mappingEPtoLP[random_index])
   //  evaluationTetrahedronChanged[j] = true;
 
-                List<Vector3> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints, prevEvaluationResults);
+                List<Color> currentEvaluationResults = EvaluatePoints(finalLightProbesDecimated, evaluationPoints, prevEvaluationResults);
                 stopwatch.Stop();
                 step3 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -441,11 +435,10 @@ List<Vector3> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res 
                 if (decimatedCost < decimatedCostMin) {
                     decimatedIndex           = i;
                     decimatedCostMin         = decimatedCost;
-                    evaluationTotalDecimated = RGBToFloat(ComputeCurrentValue(currentEvaluationResults));
 
-//decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Vector3(res.x,res.y,res.z));
+//decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
 //foreach (int j in mappingEPtoLP[random_index])
-  //    decimatedEvaluationResults[j] = new Vector3(currentEvaluationResults[j].x, currentEvaluationResults[j].y, currentEvaluationResults[j].z);
+  //    decimatedEvaluationResults[j] = new Color(currentEvaluationResults[j].r, currentEvaluationResults[j].g, currentEvaluationResults[j].b);
                 }
                 step5 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
@@ -699,7 +692,6 @@ mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 3]].Add(evaluationPos
         float va6 = ScTP(vbp, vbd, vbc);
         float vb6 = ScTP(vap, vac, vad);
         float vc6 = ScTP(vap, vad, vab);
-        float vd6 = ScTP(vap, vab, vac);
         float v6  = 1 / ScTP(vab, vac, vad);
 
         float w1  = va6*v6;
