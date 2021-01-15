@@ -14,17 +14,51 @@ public class LightProbesEditor : Editor
     GUIStyle EditorStylesMainAction;
     GUIStyle EditorStylesFoldoutMainAction;
     GUIStyle EditorStylesSubAction;
-    bool simpleGUI = true;
+    bool clickedSimpleGUI = true;
     #endregion
+
+    class PopulateGUIResponse
+    {
+        public bool clickedSuccess = false;
+        public bool clickedResetLightProbes = false;
+        public bool clickedPlaceLightProbes = false;
+        public bool clickedResetEvaluationPoints = false;
+        public bool clickedPlaceEvaluationPoints = false;
+        public bool clickedMapEvaluationPointsToLightProbes = false;
+        public bool clickedBakeLightProbes = false;
+        public bool clickedRemoveInvalidLightProbes = false;
+        public bool clickedRemoveInvalidEvaluationPoints = false;
+        public bool clickedGenerateReferenceEvaluationPoints = false;
+        public bool clickedDecimateLightProbes = false;
+
+        public void Reset() {
+            clickedSuccess = false;
+            clickedResetLightProbes = false;
+            clickedPlaceLightProbes = false;
+            clickedResetEvaluationPoints = false;
+            clickedPlaceEvaluationPoints = false;
+            clickedMapEvaluationPointsToLightProbes = false;
+            clickedBakeLightProbes = false;
+            clickedRemoveInvalidLightProbes = false;
+            clickedRemoveInvalidEvaluationPoints = false;
+            clickedGenerateReferenceEvaluationPoints = false;
+            clickedDecimateLightProbes = false;
+        }
+        public bool anyClicked() {
+            return !clickedResetLightProbes && !clickedPlaceLightProbes &&
+            !clickedResetEvaluationPoints && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
+            !clickedBakeLightProbes && !clickedRemoveInvalidLightProbes &&
+            !clickedRemoveInvalidEvaluationPoints && !clickedGenerateReferenceEvaluationPoints && !clickedDecimateLightProbes;
+        }
+    }
+
+    private PopulateGUIResponse populateGUIResponse = new PopulateGUIResponse();
 
     #region Public Override Functions
     public override void OnInspectorGUI() {
         LumibricksScript script = (LumibricksScript)target;
 
         float scale = 0.9f;
-        //Color colorHeader = new Color(1.0f, 0.65f, 0.0f);
-        //Color colorMainAction = new Color(1.0f, 0.65f, 0.0f);
-        //Color colorSubAction = new Color(0.95f, 0.95f, 0.0f);
         Color colorHeader = new Color(1.0f, 0.65f, 0.0f);
         Color colorMainAction = new Color(1.0f, 0.65f, 0.0f);
         Color colorSubAction = new Color(0.95f, 0.95f, 0.0f);
@@ -54,63 +88,48 @@ public class LightProbesEditor : Editor
         script.LightProbeGroup = component;
 
         // generate GUI Elements
-        var clickedElements = populateInspectorGUI();
-        bool clickedSuccess = clickedElements.Item1;
-        bool clickedResetLightProbes = clickedElements.Item2;
-        bool clickedPlaceLightProbes = clickedElements.Item3;
-        bool clickedResetEvaluationPoints = clickedElements.Item4;
-        bool clickedPlaceEvaluationPoints = clickedElements.Item5;
-        bool clickedMapEvaluationPointsToLightProbes = clickedElements.Item6;
-        bool clickedBakeLightProbes = clickedElements.Item7;
-        bool clickedSimplifyLightProbes = clickedElements.Item8;
-        bool clickedSimplifyEvaluationPoints = clickedElements.Item9;
-        bool clickedEvaluateEvaluationPoints = clickedElements.Item10;
-        bool clickedDecimateLightProbes = clickedElements.Item11;
+        bool clickedSuccess = populateInspectorGUI();
 
-        if (!clickedSuccess &&
-            !clickedResetLightProbes && !clickedPlaceLightProbes &&
-            !clickedResetEvaluationPoints && !clickedPlaceEvaluationPoints && !clickedMapEvaluationPointsToLightProbes &&
-            !clickedBakeLightProbes && !clickedSimplifyLightProbes &&
-            !clickedSimplifyEvaluationPoints && !clickedEvaluateEvaluationPoints && !clickedDecimateLightProbes) {
+        if (!clickedSuccess && !populateGUIResponse.anyClicked()) {
             return;
         }
 
         // Start Process - Clear Light Probes
-        if (clickedResetLightProbes) {
+        if (populateGUIResponse.clickedResetLightProbes) {
             float placems = ResetLightProbes();
             LumiLogger.Logger.Log("Done (ResetLightProbes: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Place Light Probes
-        if (clickedPlaceLightProbes) {
+        if (populateGUIResponse.clickedPlaceLightProbes) {
             float placems = PlaceLightProbes();
             LumiLogger.Logger.Log("Done (PlaceLightProbes: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Clear Evaluation Points
-        if (clickedResetEvaluationPoints) {
+        if (populateGUIResponse.clickedResetEvaluationPoints) {
             float placems = ResetEvaluationPoints();
             LumiLogger.Logger.Log("Done (ResetEvaluationsPoints: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Place Evaluation Points
-        if (clickedPlaceEvaluationPoints) {
+        if (populateGUIResponse.clickedPlaceEvaluationPoints) {
             float placems = PlaceEvaluationPoints();
             LumiLogger.Logger.Log("Done (PlaceEvaluationPoints: " + placems / 1000.0 + "s)");
             FinishProcess();
         }
 
-        if (clickedMapEvaluationPointsToLightProbes) {
+        if (populateGUIResponse.clickedMapEvaluationPointsToLightProbes) {
             float mappings = MapEvaluationPointsToLightProbes();
             LumiLogger.Logger.Log("Done (MapEvaluationPointsToLightProbes: " + mappings / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Bake 
-        if (clickedBakeLightProbes) {
+        if (populateGUIResponse.clickedBakeLightProbes) {
             if (!Lightmapping.bakedGI) {
                 LumiLogger.Logger.LogWarning("Baked GI option must be enabled to perform optimization");
                 FinishProcess();
@@ -118,40 +137,40 @@ public class LightProbesEditor : Editor
             }
 
             float bakeLPms = BakeLightProbes();
-            LumiLogger.Logger.Log("Done  (Bake: " + bakeLPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (Bake: " + bakeLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Light Probes
-        if (clickedSimplifyLightProbes) {
+        if (populateGUIResponse.clickedRemoveInvalidLightProbes) {
             float removeInvalidLPms = RemoveInvalidLightProbes();
-            LumiLogger.Logger.Log("Done  (Remove Invalid LP: " + removeInvalidLPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (Remove Invalid LP: " + removeInvalidLPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Simplify Evaluation Points
-        if (clickedSimplifyEvaluationPoints) {
+        if (populateGUIResponse.clickedRemoveInvalidEvaluationPoints) {
             float removeInvalidEPms = RemoveInvalidEvaluationPoints();
-            LumiLogger.Logger.Log("Done  (Remove Invalid EP: " + removeInvalidEPms / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (Remove Invalid EP: " + removeInvalidEPms / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Evaluate
-        if (clickedEvaluateEvaluationPoints) {
-            float evaluatems = EvaluateEvaluationPoints();
-            LumiLogger.Logger.Log("Done  (Evaluate EP: " + evaluatems / 1000.0 + "s)");
+        if (populateGUIResponse.clickedGenerateReferenceEvaluationPoints) {
+            float evaluatems = GenerateReferenceEvaluationPoints();
+            LumiLogger.Logger.Log("Done (Generate Reference EP: " + evaluatems / 1000.0 + "s)");
             FinishProcess();
         }
 
         // Start Process - Decimate Light Probes
-        if (clickedDecimateLightProbes) {
+        if (populateGUIResponse.clickedDecimateLightProbes) {
             float decimatems = 0.0f;
-            if (simpleGUI) {
+            if (clickedSimpleGUI) {
                 decimatems = DecimateLightProbes(true);
             } else {
                 decimatems = DecimateLightProbes(false);
             }
-            LumiLogger.Logger.Log("Done  (Decimate LP: " + decimatems / 1000.0 + "s)");
+            LumiLogger.Logger.Log("Done (Decimate LP: " + decimatems / 1000.0 + "s)");
             FinishProcess();
         }
     }
@@ -196,9 +215,9 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             // Find new positions
-            EditorUtility.DisplayProgressBar("Generating light probes", "Generate", 0f);
+            EditorUtility.DisplayProgressBar("Place Light Probes", "Place LP", 0f);
             script.PlaceLightProbes();
-            EditorUtility.DisplayProgressBar("Generating light probes", "Generate", 1f);
+            EditorUtility.DisplayProgressBar("Place Light Probes", "Place LP", 1f);
         }
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
@@ -211,9 +230,9 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             // Find new positions
-            EditorUtility.DisplayProgressBar("Reset light probes", "Reset", 0f);
+            EditorUtility.DisplayProgressBar("Reset Light Probes", "Reset", 0f);
             script.ResetLightProbes();
-            EditorUtility.DisplayProgressBar("Reset light probes", "Reset", 1f);
+            EditorUtility.DisplayProgressBar("Reset Light Probes", "Reset", 1f);
         }
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
@@ -226,9 +245,9 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             // Find new positions
-            EditorUtility.DisplayProgressBar("Generating Evaluation Points", "Generate", 0f);
+            EditorUtility.DisplayProgressBar("Place Evaluation Points", "Place", 0f);
             script.PlaceEvaluationPoints();
-            EditorUtility.DisplayProgressBar("Generating Evaluation Points", "Generate", 1f);
+            EditorUtility.DisplayProgressBar("Place Evaluation Points", "Place", 1f);
         }
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
@@ -241,9 +260,9 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             // Find new positions
-            EditorUtility.DisplayProgressBar("Reset evaluation points", "Reset", 0f);
+            EditorUtility.DisplayProgressBar("Reset Evaluation Points", "Reset", 0f);
             script.ResetEvaluationPoints();
-            EditorUtility.DisplayProgressBar("Reset evaluation points", "Reset", 1f);
+            EditorUtility.DisplayProgressBar("Reset Evaluation Points", "Reset", 1f);
         }
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
@@ -256,9 +275,9 @@ public class LightProbesEditor : Editor
         stopwatch = Stopwatch.StartNew();
         {
             // Find new positions
-            EditorUtility.DisplayProgressBar("Map Evaluation Points to Light Probes", "Generate", 0f);
+            EditorUtility.DisplayProgressBar("Map Evaluation Points to Light Probes", "Map", 0f);
             script.MapEvaluationPointsToLightProbes();
-            EditorUtility.DisplayProgressBar("Map Evaluation Points to Light Probes", "Generate", 1f);
+            EditorUtility.DisplayProgressBar("Map Evaluation Points to Light Probes", "Map", 1f);
         }
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
@@ -289,9 +308,9 @@ public class LightProbesEditor : Editor
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 0f);
+            EditorUtility.DisplayProgressBar("Remove Invalid Light Probes", "Remove", 0f);
             script.RemoveInvalidLightProbes(false);
-            EditorUtility.DisplayProgressBar("Remove invalid Light Probes", "Remove", 1f);
+            EditorUtility.DisplayProgressBar("Remove Invalid Light Probes", "Remove", 1f);
         }
         stopwatch.Stop();
 
@@ -303,23 +322,23 @@ public class LightProbesEditor : Editor
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Remove invalid Evaluation Points", "Remove", 0f);
+            EditorUtility.DisplayProgressBar("Remove Invalid Evaluation Points", "Remove", 0f);
             script.RemoveInvalidEvaluationPoints();
-            EditorUtility.DisplayProgressBar("Remove invalid Evaluation Points", "Remove", 1f);
+            EditorUtility.DisplayProgressBar("Remove Invalid Evaluation Points", "Remove", 1f);
         }
         stopwatch.Stop();
 
         return stopwatch.ElapsedMilliseconds;
     }
 
-    float EvaluateEvaluationPoints() {
+    float GenerateReferenceEvaluationPoints() {
         LumibricksScript script = (LumibricksScript)target;
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Evaluate Evaluation Points", "Evaluate", 0f);
-            script.EvaluateEvaluationPoints();
-            EditorUtility.DisplayProgressBar("Evaluate Evaluation Points", "Evaluate", 1f);
+            EditorUtility.DisplayProgressBar("Generate Reference Evaluation Points", "Evaluate", 0f);
+            script.GenerateReferenceEvaluationPoints();
+            EditorUtility.DisplayProgressBar("Generate Reference Evaluation Points", "Evaluate", 1f);
         }
         stopwatch.Stop();
 
@@ -330,46 +349,32 @@ public class LightProbesEditor : Editor
 
         stopwatch = Stopwatch.StartNew();
         {
-            EditorUtility.DisplayProgressBar("Decimate light probes", "Decimate", 0f);
+            EditorUtility.DisplayProgressBar("Decimate Light Probes", "Decimate", 0f);
             script.DecimateLightProbes(executeAll);
-            EditorUtility.DisplayProgressBar("Decimate light probes", "Decimate", 1f);
+            EditorUtility.DisplayProgressBar("Decimate Light Probes", "Decimate", 1f);
         }
         stopwatch.Stop();
 
         return stopwatch.ElapsedMilliseconds;
     }
 
-    (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) populateInspectorGUI() {
-        bool clickedSuccess = false;
-        bool clickedResetLightProbes = false;
-        bool clickedPlaceLightProbes = false;
-        bool clickedResetEvaluationPoints = false;
-        bool clickedPlaceEvaluationPoints = false;
-        bool clickedMapEvaluationPointsToProbes = false;
-        bool clickedBakeLightProbes = false;
-        bool clickedRemoveInvalidLightProbes = false;
-        bool clickedRemoveInvalidEvaluationPoints = false;
-        bool clickedEvaluateEvaluationPoints = false;
-        bool clickedDecimateLightProbes = false;
+    bool populateInspectorGUI() {
 
+        populateGUIResponse.Reset();
         LumibricksScript script = (LumibricksScript)target;
         if (!script.Init()) {
-            return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
-                clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
-                clickedBakeLightProbes,
-                clickedRemoveInvalidLightProbes, clickedRemoveInvalidEvaluationPoints,
-                clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
+            return false;
         }
         GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(false), GUILayout.MinWidth(50), GUILayout.MaxWidth(1500) };
 
         EditorGUILayout.LabelField("Light Probes Cut Algorithm", EditorStylesHeader);
         EditorGUILayout.Space();
 
-        simpleGUI = EditorGUILayout.ToggleLeft(new GUIContent("Simplified GUI", "Minimized GUI version"), simpleGUI, EditorStylesSubAction);
+        clickedSimpleGUI = EditorGUILayout.ToggleLeft(new GUIContent("Simplified GUI", "Minimized GUI version"), clickedSimpleGUI, EditorStylesSubAction);
         EditorGUILayout.Space();
 
-        bool clicked = GUILayout.Button(new GUIContent("Auto set LP/EP Volumes (Debug)", ""), defaultOption);
-        if (clicked) {
+        bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto set LP/EP Volumes (Debug)", ""), defaultOption);
+        if (clickedVolumesDebug) {
             script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
             script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
         }
@@ -382,8 +387,8 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
                 script.populateGUI_LightProbes();
                 GUILayout.BeginHorizontal();
-                clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
-                clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
+                populateGUIResponse.clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
+                populateGUIResponse.clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
                 GUILayout.EndHorizontal();
                 EditorGUILayout.Space();
 
@@ -394,8 +399,8 @@ public class LightProbesEditor : Editor
                 // evaluationPointGeometry = EditorGUILayout.ObjectField("Geometry Representation", evaluationPointGeometry, typeof(GameObject), true) as GameObject;
 
                 GUILayout.BeginHorizontal();
-                clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
-                clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
+                populateGUIResponse.clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
+                populateGUIResponse.clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
                 GUILayout.EndHorizontal();
             //}
         }
@@ -406,48 +411,38 @@ public class LightProbesEditor : Editor
 
         //m_ShowOptimization.target = EditorGUILayout.ToggleLeft(new GUIContent("2. Simplification", "Simplification Fields"), m_ShowOptimization.target, EditorStylesMainAction);
         //if (EditorGUILayout.BeginFadeGroup(m_ShowOptimization.faded)) {
-        m_ShowOptimization.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowOptimization.target, new GUIContent("2. Simplification", "Simplification Fields"), EditorStylesFoldoutMainAction);
+        m_ShowOptimization.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowOptimization.target, new GUIContent("2. Decimation", "Decimation Fields"), EditorStylesFoldoutMainAction);
         if (m_ShowOptimization.target) {
-            if (simpleGUI) {
+            if (!clickedSimpleGUI) {
                 GUILayout.BeginHorizontal();
-                clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
+                populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
                 GUILayout.EndHorizontal();
                 EditorGUILayout.Space();
-                clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated(true);
-            } else {
-                GUILayout.BeginHorizontal();
-                clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
-                GUILayout.EndHorizontal();
+                EditorGUILayout.LabelField("2.1. Map Valid LP to EP", EditorStylesSubAction);
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("2.1. Remove Invalid Objects", EditorStylesSubAction);
-                EditorGUILayout.Space();
-
-                //EditorGUILayout.LabelField("2.1.1. Light Probes", EditorStyles.boldLabel);
-                GUILayout.BeginHorizontal();
-                clickedRemoveInvalidLightProbes = GUILayout.Button(new GUIContent("Remove Invalid Light Probes", "Remove invalid light probes"), defaultOption);
-                GUILayout.EndHorizontal();
-                script.populateGUI_LightProbesSimplified();
-
-                EditorGUILayout.Space();
-                //EditorGUILayout.LabelField("2.1.2. Evaluation Points", EditorStyles.boldLabel);
-
-                EditorGUILayout.Space();
-                clickedMapEvaluationPointsToProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
 
                 GUILayout.BeginHorizontal();
-                clickedRemoveInvalidEvaluationPoints = GUILayout.Button(new GUIContent("Remove Invalid Evaluation Points", "Remove invalid evaluation points"), defaultOption);
+                populateGUIResponse.clickedRemoveInvalidLightProbes = GUILayout.Button(new GUIContent("Remove Invalid Light Probes", "Remove Invalid Light Probes"), defaultOption);
                 GUILayout.EndHorizontal();
-                script.populateGUI_EvaluationPointsSimplified();
+                script.populateGUI_LightProbesRemoveInvalid();
+
+                EditorGUILayout.Space();
+                populateGUIResponse.clickedMapEvaluationPointsToLightProbes = GUILayout.Button(new GUIContent("Map EP to LP", "Map Evaluation Points to Light Probes Tetrahedrons"), defaultOption);
+
+                //GUILayout.BeginHorizontal();
+                //populateGUIResponse.clickedRemoveInvalidEvaluationPoints = GUILayout.Button(new GUIContent("Remove Invalid Evaluation Points", "Remove invalid evaluation points"), defaultOption);
+                //GUILayout.EndHorizontal();
+                //script.populateGUI_EvaluationPointsRemoveInvalid();
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("2.2. Graph Reduction", EditorStylesSubAction);
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("2.2.1. Evaluation", EditorStyles.boldLabel);
-                clickedEvaluateEvaluationPoints = script.populateGUI_LightProbesEvaluated();
+                EditorGUILayout.LabelField("2.2.1. Generate Reference", EditorStyles.boldLabel);
+                populateGUIResponse.clickedGenerateReferenceEvaluationPoints = script.populateGUI_GenerateReferenceEvaluationPoints();
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("2.2.2. Decimation", EditorStyles.boldLabel);
-                clickedDecimateLightProbes = script.populateGUI_LightProbesDecimated(false);
+                populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate(false);
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("3. Optimization", EditorStylesMainAction);
@@ -456,16 +451,16 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+            GUILayout.BeginHorizontal();
+            populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
+            GUILayout.EndHorizontal();
+            EditorGUILayout.Space();
+            populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate(clickedSimpleGUI);
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
         //EditorGUILayout.EndFadeGroup();
 
-        clickedSuccess = true;
-        return (clickedSuccess, clickedResetLightProbes, clickedPlaceLightProbes,
-                clickedResetEvaluationPoints, clickedPlaceEvaluationPoints, clickedMapEvaluationPointsToProbes,
-                clickedBakeLightProbes,
-                clickedRemoveInvalidLightProbes, clickedRemoveInvalidEvaluationPoints,
-                clickedEvaluateEvaluationPoints, clickedDecimateLightProbes);
+        return true;        
     }
     #endregion
 }

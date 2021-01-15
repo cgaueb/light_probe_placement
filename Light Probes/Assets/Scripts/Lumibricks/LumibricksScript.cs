@@ -151,9 +151,9 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void populateGUI_LightProbesSimplified() {
+    public void populateGUI_LightProbesRemoveInvalid() {
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
-        currentLightProbesGenerator.populateGUI_Simplification();
+        currentLightProbesGenerator.populateGUI_RemoveInvalid();
     }
 
     public void populateGUI_EvaluationPoints() {
@@ -185,16 +185,16 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void populateGUI_EvaluationPointsSimplified() {
+    public void populateGUI_EvaluationPointsRemoveInvalid() {
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
-        currentEvaluationPointsGenerator.populateGUI_Simplification();
+        currentEvaluationPointsGenerator.populateGUI_RemoveInvalid();
     }
 
-    public bool populateGUI_LightProbesEvaluated() {
-        return m_evaluator.populateGUI_LightProbesEvaluated();
+    public bool populateGUI_GenerateReferenceEvaluationPoints() {
+        return m_evaluator.populateGUI_GenerateReferenceEvaluationPoints();
     }
-    public bool populateGUI_LightProbesDecimated(bool executeAll) {
-        return m_evaluator.populateGUI_LightProbesDecimated(currentLightProbesGenerator, currentEvaluationPointsGenerator, executeAll);
+    public bool populateGUI_Decimate(bool executeAll) {
+        return m_evaluator.populateGUI_Decimate(currentLightProbesGenerator, currentEvaluationPointsGenerator, executeAll);
     }
     public void Destroy() {
         LumiLogger.Logger.Log("Destroy entered");
@@ -290,7 +290,6 @@ public class LumibricksScript : MonoBehaviour
         LumiLogger.Logger.Log("Removed " + (count / (float)(currentLightProbesGenerator.Positions.Count)).ToString("0.00%") + " of LPs: " +
           (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
 
-
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
 
         // Set Positions to LightProbeGroup
@@ -303,6 +302,7 @@ public class LumibricksScript : MonoBehaviour
         } else {
             m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
         }
+        m_evaluator.invalidLightProbes = count;
     }
 
     public void RemoveInvalidEvaluationPoints() {
@@ -331,23 +331,26 @@ public class LumibricksScript : MonoBehaviour
           (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
         currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
     }
-    public void EvaluateEvaluationPoints() {
-        m_evaluator.EvaluateReferencePoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
+    public void GenerateReferenceEvaluationPoints() {
+        m_evaluator.GenerateReferenceEvaluationPoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
     }
     public void DecimateLightProbes(bool executeAll) {
         if (executeAll) {
             Lightmapping.Bake();
-            RemoveInvalidLightProbes(executeAll) ;
+            RemoveInvalidLightProbes(executeAll);
             MapEvaluationPointsToLightProbes();
             //RemoveInvalidEvaluationPoints();
-            EvaluateEvaluationPoints();
+            GenerateReferenceEvaluationPoints();
         }
 
         currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
         currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(this, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
         currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
+        m_evaluator.decimatedLightProbes = currentLightProbesGenerator.TotalNumProbes - currentLightProbesGenerator.TotalNumProbesSimplified;
+        m_evaluator.finalLightProbes = currentLightProbesGenerator.TotalNumProbesSimplified;
 
-        LumiLogger.Logger.Log("Decimated " + (currentLightProbesGenerator.TotalNumProbes-currentLightProbesGenerator.TotalNumProbesSimplified).ToString() + " light probes, " + currentLightProbesGenerator.TotalNumProbesSimplified + " left");
+        LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " 
+            + m_evaluator.finalLightProbes + " left");
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();

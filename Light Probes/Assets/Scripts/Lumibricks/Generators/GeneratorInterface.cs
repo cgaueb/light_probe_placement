@@ -28,7 +28,7 @@ public abstract class GeneratorInterface
     #endregion
 
     #region Virtual Functions
-    public virtual void populateGUI_Simplification() {
+    public virtual void populateGUI_RemoveInvalid() {
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField(new GUIContent("Before:", "The total number of points before Simplification"), new GUIContent(m_positions_before.ToString()));
         EditorGUILayout.LabelField(new GUIContent("After :", "The total number of points after Simplification"), new GUIContent(m_positions_after.ToString()));

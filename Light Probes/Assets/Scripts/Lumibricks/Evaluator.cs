@@ -1,4 +1,4 @@
-﻿//#define SLOW
+﻿#define FAST_IMPL
 
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,26 +6,14 @@ using UnityEditor;
 using UnityEngine.Rendering;
 
 
-class Evaluator {
+class Evaluator
+{
     public enum LightProbesEvaluationType
     {
         FixedLow,
         FixedMedium,
         FixedHigh,
         Random
-    }
-
-    public enum LightProbesSolver
-    {
-        L1Norm,
-        L2Norm,
-        L2NormSquared
-    }
-    public enum LightEvaluationMetric
-    {
-        RGB,
-        Chrominance,
-        Luminance
     }
 
     List<Vector3> evaluationFixedDirections = new List<Vector3> { 
@@ -72,27 +60,28 @@ class Evaluator {
     public Vector3[] tetrahedralizePositions;
     public List<int> evaluationTetrahedron;
 
-#if !SLOW
-    public List<bool>       evaluationTetrahedronChanged;
-    public List<List<int>>  mappingEPtoLP;
-    public List<List<int>>  mappingEPtoLPDecimated;
+#if FAST_IMPL
+    public List<bool> evaluationTetrahedronChanged;
+    public List<List<int>> mappingEPtoLP;
+    public List<List<int>> mappingEPtoLPDecimated;
 #endif
 
     // evaluation
-    public List<Color> evaluationResults; 
-    public float evaluationError = 0.0f;
+    public List<Color> evaluationResults;
+    public double evaluationError = 0.0f;
     public float evaluationTotal = 0.0f;
     public float terminationEvaluationError = 0.0f;
     public int terminationMinLightProbes = 0;
     public int terminationCurrentLightProbes = 0;
     public int terminationMaxLightProbes = 0;
+    public int startingLightProbes = 0;
+    public int decimatedLightProbes = 0;
+    public int finalLightProbes = 0;
+    public int invalidLightProbes = 0;
+
+    SolverManager solvers = new SolverManager();
 
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
-    public LightProbesSolver EvaluationSolver { get; set; } = LightProbesSolver.L1Norm;
-    private SolverCallback EvaluationSolverCallback = null;
-    public LightEvaluationMetric EvaluationMetric { get; set; } = LightEvaluationMetric.RGB;
-    private MetricCallback EvaluationMetricCallback = null;
-
 
     GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
 
@@ -110,12 +99,16 @@ class Evaluator {
     public void Reset(int probesCount) {
         ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
+        evaluationRandomSamplingCount = 50;
     }
 
     public void ResetLightProbeData(int maxProbes) {
+        startingLightProbes = maxProbes;
+        invalidLightProbes = 0;
+        finalLightProbes = 0;
         terminationMinLightProbes = 4;
         terminationMaxLightProbes = maxProbes;
-        terminationCurrentLightProbes = Mathf.Clamp((terminationMaxLightProbes - terminationMinLightProbes) / 4, terminationMinLightProbes, terminationMaxLightProbes);
+        terminationCurrentLightProbes = Mathf.Clamp(terminationMaxLightProbes / 2, terminationMinLightProbes, terminationMaxLightProbes);
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();
@@ -124,12 +117,12 @@ class Evaluator {
     public void ResetEvaluationData() {
         evaluationResults = null;
         evaluationTetrahedron = null;
-#if !SLOW        
+#if FAST_IMPL        
         evaluationTetrahedronChanged = null;
         mappingEPtoLP = null;
         mappingEPtoLPDecimated = null;
-#endif        
-        
+#endif
+
         evaluationRandomDirections = new List<Vector3>();
         evaluationTotal = 0.0f;
     }
@@ -146,28 +139,23 @@ class Evaluator {
             EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()));
         }
     }
-    public bool populateGUI_LightProbesEvaluated() {
+    public bool populateGUI_GenerateReferenceEvaluationPoints() {
         populateGUI_EvaluateDirections();
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedEvaluateEvaluationPoints = GUILayout.Button(new GUIContent("Evaluate", "Evaluate evaluation points"), defaultOption);
+        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), defaultOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
-        EditorGUILayout.LabelField(new GUIContent("Avg Irradiance (Before):", "The evaluation average irradiance target"), new GUIContent(evaluationTotal.ToString("0.00")));
-
-        return clickedEvaluateEvaluationPoints;
+        return clickedGenerateReferenceEvaluationPoints;
     }
 
-    public bool populateGUI_LightProbesDecimated(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
+    public bool populateGUI_Decimate(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
         if (executeAll) {
             populateGUI_EvaluateDirections();
         }
-        EvaluationSolver = (LightProbesSolver)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), EvaluationSolver);
-        EvaluationSolverCallback = GetSolverCallback();
-        EvaluationMetric = (LightEvaluationMetric)EditorGUILayout.EnumPopup(new GUIContent("Metric:", "The metric used to evaluate the values"), EvaluationMetric);
-        EvaluationMetricCallback = GetMetricCallback();
+        solvers.populateGUI();
 
         terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
@@ -183,103 +171,37 @@ class Evaluator {
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
-        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00")));
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("LP Before:", "The total number of light probes before Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbes.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("LP After :", "The total number of light probes after  Simplification"), new GUIContent(currentLightProbesGenerator.TotalNumProbesSimplified.ToString()));
-        EditorGUILayout.EndHorizontal();
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("EP Before:", "The total number of evaluation points before Simplification"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("EP After :", "The total number of evaluation points after  Simplification"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbesSimplified.ToString()));
-        EditorGUILayout.EndHorizontal();
+        GUILayout.BeginVertical();
+        EditorGUILayout.LabelField(new GUIContent("LPs (Orig/Bad/Final):", "The total number of light probes (Places/bad, e.g. dark/Optimal LPs after decimation)"),
+            new GUIContent(
+                  startingLightProbes.ToString() + "/"
+                + invalidLightProbes.ToString() + "/"
+                + finalLightProbes.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00%")));
+        GUILayout.EndVertical();
 
         return clickedDecimateLightProbes;
     }
 
-    private delegate Color ColorCallback(Color value);
-    private Color RGB(Color rgbColor) {
-        return rgbColor;
-    }
-
-    private Color RGB2YCoCg(Color rgbColor) {
-        return new Color(
-         rgbColor.r * 0.25f + rgbColor.g * 0.5f + rgbColor.b * 0.25f,
-         rgbColor.r * 0.5f - rgbColor.b * 0.5f,
-        -rgbColor.r * 0.25f + rgbColor.g * 0.5f - rgbColor.b * 0.25f);
-    }
-
-    private Vector3 WeightedMetric(ColorCallback colorCallback, Color value, Color reference, Color weights) {
-        Color ycocg_value = colorCallback(value);
-        Color ycocg_reference = colorCallback(reference);
-        return new Vector3(
-            (ycocg_value.r - ycocg_reference.r) * weights.r,
-            (ycocg_value.g - ycocg_reference.g) * weights.g,
-            (ycocg_value.b - ycocg_reference.b) * weights.b);
-    }
-
-    private Vector3 YCoCgHighMetric(Color value, Color reference) {
-        Color weights = new Color(0.1f, 0.45f, 0.45f);
-        return WeightedMetric(RGB2YCoCg, value, reference, weights);
-    }
-    private Vector3 YCoCgLowMetric(Color value, Color reference) {
-        Color weights = new Color(0.5f, 0.25f, 0.25f);
-        return WeightedMetric(RGB2YCoCg, value, reference, weights);
-    }
-
-    private Vector3 RGBMetric(Color value, Color reference) {
-        Color weights = new Color(0.33f, 0.33f, 0.33f);
-        return WeightedMetric(RGB, value, reference, weights);
-    }
-
-    private delegate Vector3 MetricCallback(Color value, Color reference);
-
-    private MetricCallback GetMetricCallback() {
-        if (EvaluationMetric == LightEvaluationMetric.RGB) {
-            return RGBMetric;
-        } else if (EvaluationMetric == LightEvaluationMetric.Chrominance) {
-            return YCoCgHighMetric;
-        } else if (EvaluationMetric == LightEvaluationMetric.Luminance) {
-            return YCoCgLowMetric;
-        }
-        return null;
-    }
-
-    public float SquareError(Color value, Color reference) {
-        Vector3 res = EvaluationMetricCallback(value, reference);
-        return Mathf.Sqrt(Vector3.Dot(res, res));
-    }
-    public float SquareSquareError(Color value, Color reference) {
-        return Mathf.Sqrt(SquareError(value, reference));
-    }
-
-    public float AbsoluteError(Color value, Color reference) {
-        Vector3 res = EvaluationMetricCallback(value, reference);
-        return Mathf.Abs(res.x) + Mathf.Abs(res.y) + Mathf.Abs(res.z);
-    }
-
-    private delegate float SolverCallback(Color value, Color reference);
-
-    private SolverCallback GetSolverCallback() {
-        if (EvaluationSolver == LightProbesSolver.L1Norm) {
-            return AbsoluteError;
-        } else if (EvaluationSolver == LightProbesSolver.L2Norm) {
-            return SquareError;
-        } else if (EvaluationSolver == LightProbesSolver.L2NormSquared) {
-            return SquareSquareError;
-        }
-        return null;
-    }
-
-    public float ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
-        float cost = 0.0f;
+    public double ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
+        double cost = 0.0;
         for (int j = 0; j < estimates.Count; j++) {
-            cost += EvaluationSolverCallback(estimates[j], reference[j]);
+            cost += solvers.computeSampleLoss(estimates[j], reference[j]);
         }
         cost /= (estimates.Count);
         return cost;
     }
+    public double EvaluateReference(List<Color> reference) {
+        double cost = 0.0;
+        for (int j = 0; j < reference.Count; j++) {
+            cost += solvers.evaluateSample(reference[j]);
+        }
+        cost /= (reference.Count);
+        return cost;
+    }
 
-    public void EvaluateReferencePoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
+    public void GenerateReferenceEvaluationPoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
         evaluationResults = EvaluatePoints(bakedprobes, evalPositions, null);
     }
 
@@ -312,9 +234,8 @@ class Evaluator {
                     currentEvaluationResults.AddRange(new Color[directionsCount]);
                 }
             }
-#if !SLOW            
-            else if(evaluationTetrahedronChanged[j])
-            {
+#if FAST_IMPL            
+            else if (evaluationTetrahedronChanged[j]) {
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
                 GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
@@ -332,8 +253,8 @@ class Evaluator {
                 }
             }
 #endif            
-            else{
-#if SLOW
+            else {
+#if !FAST_IMPL
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
                 GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
@@ -352,8 +273,7 @@ class Evaluator {
 #else
                 if (is_avg) {
                     currentEvaluationResults.Add(oldEvaluationResults[j]);
-                }
-                else{
+                } else {
                     // TODO
                 }
 #endif                
@@ -371,23 +291,23 @@ class Evaluator {
         // TODO: finalize plugin/UI software engineering
 
         // store the final result here
-        List<Vector3>              finalPositionsDecimated   = new List<Vector3>(posIn);
+        List<Vector3> finalPositionsDecimated = new List<Vector3>(posIn);
         List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
 
-        float   maxError                        = 0.1f;
-        float   currentEvaluationError          = 0.0f;
-        int     iteration                       = 0;
-        int     remaining_probes                = terminationCurrentLightProbes;
-        bool    is_stochastic                   = false;
-        int     num_stochastic_samples          = 20;
+        double maxError = 0.1;
+        double currentEvaluationError = 0.0;
+        int iteration = 0;
+        int remaining_probes = terminationCurrentLightProbes;
+        bool is_stochastic = false;
+        int num_stochastic_samples = 20;
 
         LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
         LumiLogger.Logger.Log("Settings: " +
             "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
-            ", Solver: " + EvaluationSolver.ToString() +
-            ", Metric: " + EvaluationMetric.ToString());
+            ", Solver: " + solvers.CurrentSolverType.ToString() +
+            ", Metric: " + solvers.CurrentMetricType.ToString());
 
 
         long totalms = 0;
@@ -400,9 +320,10 @@ class Evaluator {
         tetr = 0;
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
-        
-#if !SLOW
-        List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
+
+        //double referenceValue = ComputeCurrentCost
+#if FAST_IMPL
+        List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
 #endif
 
         while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
@@ -410,14 +331,14 @@ class Evaluator {
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. Done
             // Step 2: Only evaluate points in the vicinity of the probe. TODO:
-            int     decimatedIndex      = -1;
-            float   decimatedCostMin    = float.MaxValue;
+            int decimatedIndex = -1;
+            double decimatedCostMin = double.MaxValue;
 
-            int     random_samples_each_iteration   = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
+            int random_samples_each_iteration = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
 
-#if !SLOW
-            List<Color> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
-            List<List<int>> mappingEPtoLPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count-1);
+#if FAST_IMPL
+            List<Color> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
+            List<List<int>> mappingEPtoLPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
 #endif
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
@@ -441,7 +362,7 @@ class Evaluator {
                 // 3. Evaluate
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-#if !SLOW
+#if FAST_IMPL
                 // Evaluate only the points that have been changed
                 evaluationTetrahedronChanged = new List<bool>(new bool[evaluationPoints.Count]);
                 foreach (int j in mappingEPtoLP[random_index])
@@ -456,21 +377,21 @@ class Evaluator {
 
                 // 4. Compute Cost of current configuration
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                float decimatedCost = ComputeCurrentCost(currentEvaluationResults, evaluationResults);
+                double decimatedCost = ComputeCurrentCost(currentEvaluationResults, evaluationResults);
                 step4 += stopwatch.ElapsedMilliseconds;
                 totalms += stopwatch.ElapsedMilliseconds;
 
                 // 5. Find light probe with the minimum error
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 if (decimatedCost < decimatedCostMin) {
-                    decimatedIndex           = i;
-                    decimatedCostMin         = decimatedCost;
+                    decimatedIndex = i;
+                    decimatedCostMin = decimatedCost;
 
-#if !SLOW
-                    decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Color(res.r,res.g,res.b));
+#if FAST_IMPL
+                    decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
                     foreach (int j in mappingEPtoLP[random_index])
                         decimatedEvaluationResults[j] = new Color(currentEvaluationResults[j].r, currentEvaluationResults[j].g, currentEvaluationResults[j].b);
-                    
+
                     mappingEPtoLPDecimatedMin = mappingEPtoLPDecimated.ConvertAll(res => new List<int>(res.ToArray()));
 #endif                        
                 }
@@ -493,9 +414,9 @@ class Evaluator {
             finalPositionsDecimated.RemoveAt(decimatedIndex);
             finalLightProbesDecimated.RemoveAt(decimatedIndex);
             currentEvaluationError = decimatedCostMin;
-            
-#if !SLOW
-            mappingEPtoLP  = mappingEPtoLPDecimatedMin.ConvertAll(res => new List<int>(res.ToArray()));
+
+#if FAST_IMPL
+            mappingEPtoLP = mappingEPtoLPDecimatedMin.ConvertAll(res => new List<int>(res.ToArray()));
 #endif
             LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
             ++iteration;
@@ -511,7 +432,7 @@ class Evaluator {
         LumiLogger.Logger.Log("4. Calc Cost: " + step4 / 1000.0 + "s");
         LumiLogger.Logger.Log("5. Find Min : " + step5 / 1000.0 + "s");
         LumiLogger.Logger.Log("6. Insert LP: " + step6 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s, " + (step1+step2+step3+step4+step5+step6)/1000.0 + "s");
+        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s, " + (step1 + step2 + step3 + step4 + step5 + step6) / 1000.0 + "s");
         return finalPositionsDecimated;
     }
     public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
@@ -570,7 +491,7 @@ class Evaluator {
     long mapping = 0;
 
     public void MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
-        
+
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         Lightmapping.Tetrahedralize(probePositions.ToArray(), out tetrahedralizeIndices, out tetrahedralizePositions);
@@ -583,15 +504,15 @@ class Evaluator {
 
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        int             tetrahedronCount         = tetrahedralizeIndices.Length/4;
-        Vector3[]       tetrahedronPositions;
+        int tetrahedronCount = tetrahedralizeIndices.Length / 4;
+        Vector3[] tetrahedronPositions;
         List<Vector3[]> tetrahedronPositionsList = new List<Vector3[]>(tetrahedronCount);
-        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++){
+        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
             GetTetrahedronPositions(tetrahedronIndex, out tetrahedronPositions);
             tetrahedronPositionsList.Add(tetrahedronPositions);
         }
 
-#if !SLOW
+#if FAST_IMPL
         mappingEPtoLPDecimated = new List<List<int>>(probePositions.Count);
         for (int j = 0; j < probePositions.Count; j++) {
             mappingEPtoLPDecimated.Add(new List<int>());
@@ -606,7 +527,7 @@ class Evaluator {
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
                 if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
                     evaluationTetrahedron[evaluationPositionIndex] = tetrahedronIndex;
-#if !SLOW
+#if FAST_IMPL
                     evaluationTetrahedronChanged[evaluationPositionIndex] = true;
                     mappingEPtoLPDecimated[tetrahedralizeIndices[tetrahedronIndex * 4 + 0]].Add(evaluationPositionIndex);
                     mappingEPtoLPDecimated[tetrahedralizeIndices[tetrahedronIndex * 4 + 1]].Add(evaluationPositionIndex);
@@ -635,7 +556,7 @@ class Evaluator {
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int mapped = 0;
 
-#if !SLOW
+#if FAST_IMPL
         evaluationTetrahedronChanged = new List<bool>(evalPositions.Count);
         mappingEPtoLP = new List<List<int>>(probePositions.Count);
         for (int j = 0; j < probePositions.Count; j++) {
@@ -643,10 +564,10 @@ class Evaluator {
         }
 #endif
 
-        int             tetrahedronCount         = tetrahedralizeIndices.Length/4;
-        Vector3[]       tetrahedronPositions;
+        int tetrahedronCount = tetrahedralizeIndices.Length / 4;
+        Vector3[] tetrahedronPositions;
         List<Vector3[]> tetrahedronPositionsList = new List<Vector3[]>(tetrahedronCount);
-        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++){
+        for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
             GetTetrahedronPositions(tetrahedronIndex, out tetrahedronPositions);
             tetrahedronPositionsList.Add(tetrahedronPositions);
         }
@@ -654,13 +575,13 @@ class Evaluator {
         evaluationTetrahedron = new List<int>(evalPositions.Count);
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
             evaluationTetrahedron.Add(-1);
-#if !SLOW
+#if FAST_IMPL
             evaluationTetrahedronChanged.Add(false);
 #endif
             // 1. Relate Evaluation Point with one Tetrahedron
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
                 if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
-#if !SLOW
+#if FAST_IMPL
                     evaluationTetrahedronChanged[evaluationPositionIndex] = true;
                     mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 0]].Add(evaluationPositionIndex);
                     mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 1]].Add(evaluationPositionIndex);
@@ -735,8 +656,8 @@ class Evaluator {
     }
 
     Vector4 GetTetrahedronWeights(Vector3[] v, Vector3 p) {
-        Vector3 vap = p    - v[0];
-        Vector3 vbp = p    - v[1];
+        Vector3 vap = p - v[0];
+        Vector3 vbp = p - v[1];
         Vector3 vab = v[1] - v[0];
         Vector3 vac = v[2] - v[0];
         Vector3 vad = v[3] - v[0];
@@ -747,12 +668,12 @@ class Evaluator {
         float va6 = ScTP(vbp, vbd, vbc);
         float vb6 = ScTP(vap, vac, vad);
         float vc6 = ScTP(vap, vad, vab);
-        float v6  = 1 / ScTP(vab, vac, vad);
+        float v6 = 1 / ScTP(vab, vac, vad);
 
-        float w1  = va6*v6;
-        float w2  = vb6*v6;
-        float w3  = vc6*v6;
-        float w4  = 1 - w1 - w2 -w3;
+        float w1 = va6 * v6;
+        float w2 = vb6 * v6;
+        float w3 = vc6 * v6;
+        float w4 = 1 - w1 - w2 - w3;
 
         return new Vector4(w1, w2, w3, w4);
     }
