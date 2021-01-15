@@ -9,8 +9,8 @@ public class GeneratorPoisson : GeneratorInterface
     private Bounds sceneBounds;
     private int num_iterations = 4;
     private int num_new_candidate_points = 32;
-    private int defaultProbeCount = 32;
-    private int probeCount = 32;
+    private int defaultProbeCount = 128;
+    private int probeCount = 128;
     #endregion
 
     #region Constructor Functions
@@ -21,6 +21,7 @@ public class GeneratorPoisson : GeneratorInterface
     public override void populateGUI_Initialization() {
         probeCount = EditorGUILayout.IntField(new GUIContent("Number:", "The total number of points"), probeCount);
         probeCount = Mathf.Max(1, probeCount);
+        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()));
     }
 
     public override void Reset() {

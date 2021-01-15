@@ -18,6 +18,7 @@ public class GeneratorRandom : GeneratorInterface
     public override void populateGUI_Initialization() {
         probeCount = EditorGUILayout.IntField(new GUIContent("Number:", "The total number of points"), probeCount);
         probeCount = Mathf.Max(1, probeCount);
+        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()));
     }
 
     public override void Reset() {
