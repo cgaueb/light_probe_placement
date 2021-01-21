@@ -59,6 +59,7 @@ class Evaluator
     public int[] tetrahedralizeIndices;
     public Vector3[] tetrahedralizePositions;
     public List<int> evaluationTetrahedron;
+    public List<Vector4> evaluationTetrahedronWeights;
 
 #if FAST_IMPL
     public List<bool> evaluationTetrahedronChanged;
@@ -117,6 +118,7 @@ class Evaluator
     public void ResetEvaluationData() {
         evaluationResults = null;
         evaluationTetrahedron = null;
+        evaluationTetrahedronWeights = null;
 #if FAST_IMPL        
         evaluationTetrahedronChanged = null;
         mappingEPtoLP = null;
@@ -237,7 +239,7 @@ class Evaluator
 #if FAST_IMPL            
             else if (evaluationTetrahedronChanged[j]) {
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
-                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], evaluationTetrahedronWeights[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
                 if (is_avg) {
                     Color uniformSampledEvaluation = new Color(0, 0, 0);
@@ -256,7 +258,7 @@ class Evaluator
             else {
 #if !FAST_IMPL
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
-                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], bakedprobes, ref sh2);
+                GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], evaluationTetrahedronWeights[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
                 if (is_avg) {
                     Color uniformSampledEvaluation = new Color(0, 0, 0);
@@ -283,12 +285,12 @@ class Evaluator
         return currentEvaluationResults;
     }
     public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, List<Vector3> evaluationPoints, List<Vector3> posIn, List<SphericalHarmonicsL2> bakedProbes) {
-        // TODO: add iterate
-        // TODO: optimize, e.g. stochastic
-        // TODO: modify cost function
-        // TODO: verify result
-        // TODO: potentially add multiple cost functions and error metrics
-        // TODO: finalize plugin/UI software engineering
+        // TODO: add iterate [DONE]
+        // TODO: optimize [NOT], e.g. stochastic [DONE]
+        // TODO: modify cost function [DONE]
+        // TODO: verify result [DONE]
+        // TODO: potentially add multiple cost functions and error metrics [DONE]
+        // TODO: finalize plugin/UI software engineering [ALMOST DONE]
 
         // store the final result here
         List<Vector3> finalPositionsDecimated = new List<Vector3>(posIn);
@@ -321,7 +323,6 @@ class Evaluator
         System.Diagnostics.Stopwatch stopwatch;
         mapping = 0;
 
-        //double referenceValue = ComputeCurrentCost
 #if FAST_IMPL
         List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
 #endif
@@ -329,8 +330,9 @@ class Evaluator
         while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
-            // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. Done
-            // Step 2: Only evaluate points in the vicinity of the probe. TODO:
+            // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
+            // Step 2: Only perform mapping in the vicinity of the removed light probe. [NOT]
+            // Step 3: Only evaluate points in the vicinity of the probe. [DONE]
             int decimatedIndex = -1;
             double decimatedCostMin = double.MaxValue;
 
@@ -470,7 +472,7 @@ class Evaluator
         }
     }
 
-    void GetInterpolatedLightProbe(Vector3 evalPosition, int evalTetrahedron, List<SphericalHarmonicsL2> bakedprobes, ref SphericalHarmonicsL2 sh2) {
+    void GetInterpolatedLightProbe(Vector3 evalPosition, int evalTetrahedron, Vector4 evalWeights, List<SphericalHarmonicsL2> bakedprobes, ref SphericalHarmonicsL2 sh2) {
         // GetTetrahedronSHs
         SphericalHarmonicsL2[] tetrahedronSH2 = new SphericalHarmonicsL2[4];
         tetrahedronSH2[0] = bakedprobes[tetrahedralizeIndices[evalTetrahedron * 4 + 0]];
@@ -478,10 +480,15 @@ class Evaluator
         tetrahedronSH2[2] = bakedprobes[tetrahedralizeIndices[evalTetrahedron * 4 + 2]];
         tetrahedronSH2[3] = bakedprobes[tetrahedralizeIndices[evalTetrahedron * 4 + 3]];
 
-        // Get Barycentric Weights
-        Vector3[] tetrahedronPositions;
-        GetTetrahedronPositions(evalTetrahedron, out tetrahedronPositions);
-        Vector4 weights = GetTetrahedronWeights(tetrahedronPositions, evalPosition);
+        Vector4 weights = evalWeights;
+        if(weights.Equals(Vector4.zero)) // If is insize
+        {
+            // Get Barycentric Weights
+            Vector3[] tetrahedronPositions;
+            GetTetrahedronPositions(evalTetrahedron, out tetrahedronPositions);
+        
+            weights = GetTetrahedronWeights(tetrahedronPositions, evalPosition);
+        }
 
         // Interpolate
         sh2 = weights.x * tetrahedronSH2[0] + weights.y * tetrahedronSH2[1] + weights.z * tetrahedronSH2[2] + weights.w * tetrahedronSH2[3];
@@ -512,6 +519,12 @@ class Evaluator
             tetrahedronPositionsList.Add(tetrahedronPositions);
         }
 
+        // Compute LP center -> TODO Faster, keep previous center 
+        Vector3 lightProbesCentroid = new Vector3();
+        for (int lpIndex = 0; lpIndex < probePositions.Count; lpIndex++)
+            lightProbesCentroid += probePositions[lpIndex];
+        lightProbesCentroid /= probePositions.Count;
+
 #if FAST_IMPL
         mappingEPtoLPDecimated = new List<List<int>>(probePositions.Count);
         for (int j = 0; j < probePositions.Count; j++) {
@@ -520,15 +533,16 @@ class Evaluator
 #endif
 
         evaluationTetrahedron = new List<int>(evalPositions.Count);
+        evaluationTetrahedronWeights = new List<Vector4>(evalPositions.Count);
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
             evaluationTetrahedron.Add(-1);
+            evaluationTetrahedronWeights.Add(Vector4.zero);
 
             // 1. Relate Evaluation Point with one Tetrahedron
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
                 if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
                     evaluationTetrahedron[evaluationPositionIndex] = tetrahedronIndex;
 #if FAST_IMPL
-                    evaluationTetrahedronChanged[evaluationPositionIndex] = true;
                     mappingEPtoLPDecimated[tetrahedralizeIndices[tetrahedronIndex * 4 + 0]].Add(evaluationPositionIndex);
                     mappingEPtoLPDecimated[tetrahedralizeIndices[tetrahedronIndex * 4 + 1]].Add(evaluationPositionIndex);
                     mappingEPtoLPDecimated[tetrahedralizeIndices[tetrahedronIndex * 4 + 2]].Add(evaluationPositionIndex);
@@ -536,6 +550,46 @@ class Evaluator
 #endif                    
                     break;
                 }
+            }
+
+            if(evaluationTetrahedron[evaluationPositionIndex] == -1)
+            {   
+                int   min_index = -1;
+                float min_t     = float.MaxValue;
+
+                Vector3 ray_origin    = evalPositions[evaluationPositionIndex];
+                Vector3 ray_direction = lightProbesCentroid - ray_origin;
+                Vector4 weights       = new Vector4();
+
+                for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) { 
+                    for (int j = 0; j < 4; j++) {
+                        Vector3 v0 = tetrahedronPositionsList[tetrahedronIndex][(j + 0)%4];
+                        Vector3 v1 = tetrahedronPositionsList[tetrahedronIndex][(j + 1)%4];
+                        Vector3 v2 = tetrahedronPositionsList[tetrahedronIndex][(j + 2)%4];
+
+                        float t=0, u=0, v=0;
+                        if (IntersectRay_Triangle(ray_origin, ray_direction, v0, v1, v2, ref t, ref u, ref v))
+                        {
+                            if (t > 0 && t < min_t){
+                                min_t     = t;
+                                min_index = tetrahedronIndex;
+                                // Set Weights
+                                weights[(j + 0)%4] = u;
+                                weights[(j + 1)%4] = v;
+                                weights[(j + 2)%4] = 1-u-v;
+                                weights[(j + 3)%4] = 0;
+                            }
+                        }
+                    }
+                }
+                evaluationTetrahedron[evaluationPositionIndex]        = min_index;
+                evaluationTetrahedronWeights[evaluationPositionIndex] = new Vector4(weights.x, weights.y, weights.z, weights.w);
+#if FAST_IMPL
+                mappingEPtoLPDecimated[tetrahedralizeIndices[min_index * 4 + 0]].Add(evaluationPositionIndex);
+                mappingEPtoLPDecimated[tetrahedralizeIndices[min_index * 4 + 1]].Add(evaluationPositionIndex);
+                mappingEPtoLPDecimated[tetrahedralizeIndices[min_index * 4 + 2]].Add(evaluationPositionIndex);
+                mappingEPtoLPDecimated[tetrahedralizeIndices[min_index * 4 + 3]].Add(evaluationPositionIndex);
+#endif                
             }
         }
         stopwatch.Stop();
@@ -572,17 +626,24 @@ class Evaluator
             tetrahedronPositionsList.Add(tetrahedronPositions);
         }
 
+        // Compute LP center
+        Vector3 lightProbesCentroid = new Vector3();
+        for (int lpIndex = 0; lpIndex < probePositions.Count; lpIndex++)
+            lightProbesCentroid += probePositions[lpIndex];
+        lightProbesCentroid /= probePositions.Count;
+
         evaluationTetrahedron = new List<int>(evalPositions.Count);
+        evaluationTetrahedronWeights = new List<Vector4>(evalPositions.Count);
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
             evaluationTetrahedron.Add(-1);
+            evaluationTetrahedronWeights.Add(Vector4.zero);
 #if FAST_IMPL
-            evaluationTetrahedronChanged.Add(false);
+            evaluationTetrahedronChanged.Add(true);
 #endif
             // 1. Relate Evaluation Point with one Tetrahedron
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) {
                 if (IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex])) {
 #if FAST_IMPL
-                    evaluationTetrahedronChanged[evaluationPositionIndex] = true;
                     mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 0]].Add(evaluationPositionIndex);
                     mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 1]].Add(evaluationPositionIndex);
                     mappingEPtoLP[tetrahedralizeIndices[tetrahedronIndex * 4 + 2]].Add(evaluationPositionIndex);
@@ -593,11 +654,97 @@ class Evaluator
                     break;
                 }
             }
+
+            if(evaluationTetrahedron[evaluationPositionIndex] == -1)
+            {   
+                int   min_index = -1;
+                float min_t     = float.MaxValue;
+
+                Vector3 ray_origin    = evalPositions[evaluationPositionIndex];
+                Vector3 ray_direction = lightProbesCentroid - ray_origin;
+                Vector4 weights       = new Vector4();
+
+                for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronCount; tetrahedronIndex++) { 
+                    
+                    for (int j = 0; j < 4; j++) {
+                        Vector3 v0 = tetrahedronPositionsList[tetrahedronIndex][(j + 0)%4];
+                        Vector3 v1 = tetrahedronPositionsList[tetrahedronIndex][(j + 1)%4];
+                        Vector3 v2 = tetrahedronPositionsList[tetrahedronIndex][(j + 2)%4];
+
+                        float t=0, u=0, v=0;
+                        if (IntersectRay_Triangle(ray_origin, ray_direction, v0, v1, v2, ref t, ref u, ref v))
+                        {
+                            if (t > 0 && t < min_t){
+                                min_t     = t;
+                                min_index = tetrahedronIndex;
+                                // Set Weights
+                                weights[(j + 0)%4] = u;
+                                weights[(j + 1)%4] = v;
+                                weights[(j + 2)%4] = 1-u-v;
+                                weights[(j + 3)%4] = 0;
+                            }
+                        }
+                    }
+                }
+                evaluationTetrahedron[evaluationPositionIndex]        = min_index;
+                evaluationTetrahedronWeights[evaluationPositionIndex] = new Vector4(weights.x, weights.y, weights.z, weights.w);
+#if FAST_IMPL
+                mappingEPtoLP[tetrahedralizeIndices[min_index * 4 + 0]].Add(evaluationPositionIndex);
+                mappingEPtoLP[tetrahedralizeIndices[min_index * 4 + 1]].Add(evaluationPositionIndex);
+                mappingEPtoLP[tetrahedralizeIndices[min_index * 4 + 2]].Add(evaluationPositionIndex);
+                mappingEPtoLP[tetrahedralizeIndices[min_index * 4 + 3]].Add(evaluationPositionIndex);
+#endif
+            }
+
         }
         stopwatch.Stop();
         mapping += stopwatch.ElapsedMilliseconds;
         return mapped;
     }
+
+
+    bool IntersectRay_Triangle( Vector3 ray_origin, Vector3 ray_direction, 
+                                        Vector3 v0, Vector3 v1, Vector3 v2,
+                                        ref float t, ref float u, ref float v)
+    {
+        // find vectors for two edges sharing v0
+        Vector3 edge1 = v1 - v0;
+        Vector3 edge2 = v2 - v0;
+
+        // begin calculating determinant - also used to calculate U parameter
+        Vector3 pvec  = Vector3.Cross(ray_direction, edge2);
+        
+        // if determinant is near zero, ray lies in plane of triangle
+        float  det   = Vector3.Dot(edge1, pvec);
+
+        // use backface culling
+        // if (det < RT_EPSILON)
+        //   return false;
+
+        float  inv_det = 1.0f / det;
+        // calculate distance from v0 to ray origin
+        Vector3 tvec    = ray_origin - v0;
+
+        // calculate U parameter and test bounds
+        u = Vector3.Dot(tvec, pvec) * inv_det;
+        if (u < 0.0 || u > 1.0f)
+            return false;
+
+        // prepare to test V parameter
+        Vector3 qvec    = Vector3.Cross(tvec, edge1);
+
+        // calculate V parameter and test bounds
+        v = Vector3.Dot(ray_direction, qvec) * inv_det;
+        if (v < 0.0 || u + v > 1.0f)
+            return false;
+
+        // calculate t, ray intersects triangle
+        t = Vector3.Dot(edge2, qvec) * inv_det;
+
+        return true;
+    }
+
+
     public void EvaluateBakedLightProbes(List<SphericalHarmonicsL2> bakedProbes, out List<bool> invalidPoints) {
         SphericalHarmonicsL2 shZero = new SphericalHarmonicsL2();
         shZero.Clear();
@@ -607,7 +754,7 @@ class Evaluator
             invalidPoints.Add(sh2.Equals(shZero));
         }
     }
-    public void GenerateUniformSphereSampling() {
+    void GenerateUniformSphereSampling() {
         evaluationRandomDirections.Clear();
         for (int i = 0; i < evaluationRandomSamplingCount; i++) {
             Vector2 r = new Vector2(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f));
@@ -674,6 +821,7 @@ class Evaluator
         float w2 = vb6 * v6;
         float w3 = vc6 * v6;
         float w4 = 1 - w1 - w2 - w3;
+
 
         return new Vector4(w1, w2, w3, w4);
     }

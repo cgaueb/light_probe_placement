@@ -284,8 +284,8 @@ public class LumibricksScript : MonoBehaviour
                 continue;
             }
             ++count;
-            currentLightProbesGenerator.Positions.RemoveAt(i);
-            LightProbesBakedProbes.RemoveAt(i);
+            //currentLightProbesGenerator.Positions.RemoveAt(i);
+            //LightProbesBakedProbes.RemoveAt(i);
         }
         LumiLogger.Logger.Log("Removed " + (count / (float)(currentLightProbesGenerator.Positions.Count)).ToString("0.00%") + " of LPs: " +
           (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
