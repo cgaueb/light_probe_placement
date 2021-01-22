@@ -218,6 +218,7 @@ public class LumibricksScript : MonoBehaviour
         GenerateLightProbes();
 
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
+        m_evaluator.ResetTime();
     }
 
     public void ResetLightProbes() {
@@ -241,6 +242,7 @@ public class LumibricksScript : MonoBehaviour
         }
         GenerateEvaluationPoints();
         m_evaluator.ResetEvaluationData();
+        m_evaluator.ResetTime();
     }
 
     public void ResetEvaluationPoints() {
@@ -331,6 +333,7 @@ public class LumibricksScript : MonoBehaviour
     }
 
     public void DecimateLightProbes() {
+        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
         Lightmapping.Bake();
         RemoveInvalidLightProbes();
         MapEvaluationPointsToLightProbes();
@@ -346,7 +349,10 @@ public class LumibricksScript : MonoBehaviour
         LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " + m_evaluator.finalLightProbes + " left");
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
+        stopwatch.Stop();
+        m_evaluator.totalTime = (float)(stopwatch.ElapsedMilliseconds / 1000.0);
     }
+
     #endregion
 
     #region Private Functions

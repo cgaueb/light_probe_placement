@@ -79,6 +79,7 @@ class Evaluator
     public int decimatedLightProbes = 0;
     public int finalLightProbes = 0;
     public int invalidLightProbes = 0;
+    public float totalTime = 0.0f;
 
     SolverManager solvers = new SolverManager();
 
@@ -96,6 +97,10 @@ class Evaluator
         }
     }
     #endregion
+
+    public void ResetTime() {
+        totalTime = 0.0f;
+    }
 
     public void Reset(int probesCount) {
         ResetLightProbeData(probesCount);
@@ -174,6 +179,7 @@ class Evaluator
                 + finalLightProbes.ToString()));
         EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()));
         EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00%")));
+        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")));
         GUILayout.EndVertical();
 
         return clickedDecimateLightProbes;
