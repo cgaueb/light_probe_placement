@@ -211,8 +211,8 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void PlaceLightProbes(bool update_volume = true) {
-        if (update_volume && !UpdateSceneVolume(ref this.sceneVolumeLP, ref this.sceneVolumeLPprev, ref this.sceneVolumeLPBounds)) {
+    public void PlaceLightProbes() {
+        if (!UpdateSceneVolume(ref sceneVolumeLP, ref sceneVolumeLPprev, ref sceneVolumeLPBounds)) {
             return;
         }
         GenerateLightProbes();
@@ -226,18 +226,14 @@ public class LumibricksScript : MonoBehaviour
             return;
         }
 
-        if (!UpdateSceneVolume(ref this.sceneVolumeLP, ref this.sceneVolumeLPprev, ref this.sceneVolumeLPBounds)) {
-            return;
-        }
-
         // Get Generator
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
         currentLightProbesGenerator.Reset();
         // Place the Light Probes
-        PlaceLightProbes(false);
+        PlaceLightProbes();
     }
-    public void PlaceEvaluationPoints(bool update_volume = true) {
-        if (update_volume && !UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds)) {
+    public void PlaceEvaluationPoints() {
+        if (!UpdateSceneVolume(ref sceneVolumeEP, ref sceneVolumeEPprev, ref sceneVolumeEPBounds)) {
             return;
         }
         GenerateEvaluationPoints();
@@ -250,15 +246,11 @@ public class LumibricksScript : MonoBehaviour
             return;
         }
 
-        if (!UpdateSceneVolume(ref this.sceneVolumeEP, ref this.sceneVolumeEPprev, ref this.sceneVolumeEPBounds)) {
-            return;
-        }
-
         // Clear Positions
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
         currentEvaluationPointsGenerator.Reset();
         // Place the Evaluation Points
-        PlaceEvaluationPoints(false);
+        PlaceEvaluationPoints();
     }
 
     public void MapEvaluationPointsToLightProbes() {
