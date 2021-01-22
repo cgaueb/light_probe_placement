@@ -369,6 +369,7 @@ class Evaluator
                 // 4. Compute Cost of current configuration
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 double decimatedCost = ComputeCurrentCost(currentEvaluationResults, evaluationResults);
+                stopwatch.Stop();
                 step4 += stopwatch.ElapsedMilliseconds;
 
                 // 5. Find light probe with the minimum error
@@ -385,12 +386,14 @@ class Evaluator
                     mappingEPtoLPDecimatedMin = mappingEPtoLPDecimated.ConvertAll(res => new List<int>(res.ToArray()));
 #endif                        
                 }
+                stopwatch.Stop();
                 step5 += stopwatch.ElapsedMilliseconds;
 
                 // add back the removed items O(n)
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
+                stopwatch.Stop();
                 step6 += stopwatch.ElapsedMilliseconds;
             }
 
