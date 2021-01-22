@@ -153,10 +153,8 @@ class Evaluator
         return clickedGenerateReferenceEvaluationPoints;
     }
 
-    public bool populateGUI_Decimate(GeneratorInterface currentLightProbesGenerator, GeneratorInterface currentEvaluationPointsGenerator, bool executeAll) {
-        if (executeAll) {
-            populateGUI_EvaluateDirections();
-        }
+    public bool populateGUI_Decimate(LumibricksScript script, GeneratorInterface currentEvaluationPointsGenerator) {
+        populateGUI_EvaluateDirections();
         solvers.populateGUI();
 
         terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
@@ -164,12 +162,7 @@ class Evaluator
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = false;
-        if (executeAll) {
-            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer", "Optimizes light probes"), defaultOption);
-        } else {
-            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Decimate", "Decimate light probes"), defaultOption);
-        }
+        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Cancel", "Cancel the operation"), defaultOption);       
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
