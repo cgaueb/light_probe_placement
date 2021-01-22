@@ -265,7 +265,7 @@ class Evaluator
                 if (is_avg) {
                     currentEvaluationResults.Add(oldEvaluationResults[j]);
                 } else {
-                    // TODO
+                   currentEvaluationResults.AddRange(oldEvaluationResults.GetRange(j*directionsCount, directionsCount));
                 }
 #endif                
             }
