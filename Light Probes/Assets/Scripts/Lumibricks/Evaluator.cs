@@ -186,20 +186,10 @@ class Evaluator
     }
 
     public double ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
-        double cost = 0.0;
-        for (int j = 0; j < estimates.Count; j++) {
-            cost += solvers.computeSampleLoss(estimates[j], reference[j]);
-        }
-        cost /= (estimates.Count);
-        return cost;
+        return solvers.computeLoss(estimates, reference);
     }
     public double EvaluateReference(List<Color> reference) {
-        double cost = 0.0;
-        for (int j = 0; j < reference.Count; j++) {
-            cost += solvers.evaluateSample(reference[j]);
-        }
-        cost /= (reference.Count);
-        return cost;
+        return solvers.evaluate(reference);
     }
 
     public void GenerateReferenceEvaluationPoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {

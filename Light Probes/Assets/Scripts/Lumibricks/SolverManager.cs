@@ -71,11 +71,29 @@ class SolverManager
         metricsManager.populateGUI();
     }
 
-    public double computeSampleLoss(Color value, Color reference) {
+    private double computeSampleLoss(Color value, Color reference) {
         return currentSolver.computeSampleLoss(value, reference);
     }
 
-    public double evaluateSample(Color value) {
+    private double evaluateSample(Color value) {
         return currentSolver.evaluateSample(value);
+    }
+
+    public double computeLoss(List<Color> estimates, List<Color> reference) {
+        double cost = 0.0;
+        for (int j = 0; j < estimates.Count; j++) {
+            cost += computeSampleLoss(estimates[j], reference[j]);
+        }
+        //cost /= (estimates.Count);
+        return cost;
+    }
+
+    public double evaluate(List<Color> reference) {
+        double cost = 0.0;
+        for (int j = 0; j < reference.Count; j++) {
+            cost += evaluateSample(reference[j]);
+        }
+        //cost /= (estimates.Count);
+        return cost;
     }
 }
