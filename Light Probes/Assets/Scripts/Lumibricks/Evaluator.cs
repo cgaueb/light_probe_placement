@@ -816,6 +816,7 @@ class Evaluator
 
     bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p) {
         Vector4 weights = GetTetrahedronWeights(v, p);
-        return weights.x >= 0 && weights.y >= 0 && weights.z >= 0 && weights.w >= 0;
+        return weights.x >= 0 && weights.y >= 0 && weights.z >= 0 && weights.w >= 0
+            && (weights.x + weights.y + weights.z + weights.w <= 1.0);
     }
 }
