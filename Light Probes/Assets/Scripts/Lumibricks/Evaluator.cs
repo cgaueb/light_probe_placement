@@ -305,7 +305,6 @@ class Evaluator
             ", Metric: " + solvers.CurrentMetricType.ToString());
 
 
-        long totalms = 0;
         long step1 = 0;
         long step2 = 0;
         long step3 = 0;
@@ -345,14 +344,12 @@ class Evaluator
                 finalLightProbesDecimated.RemoveAt(random_index);
                 stopwatch.Stop();
                 step1 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
 
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 MapEvaluationPointsToLightProbesLocal(finalPositionsDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step2 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
 
                 // 3. Evaluate
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -368,13 +365,11 @@ class Evaluator
 #endif
                 stopwatch.Stop();
                 step3 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
 
                 // 4. Compute Cost of current configuration
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 double decimatedCost = ComputeCurrentCost(currentEvaluationResults, evaluationResults);
                 step4 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
 
                 // 5. Find light probe with the minimum error
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -391,14 +386,12 @@ class Evaluator
 #endif                        
                 }
                 step5 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
 
                 // add back the removed items O(n)
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
                 step6 += stopwatch.ElapsedMilliseconds;
-                totalms += stopwatch.ElapsedMilliseconds;
             }
 
             if (decimatedIndex == -1) {
@@ -427,7 +420,8 @@ class Evaluator
         LumiLogger.Logger.Log("4. Calc Cost: " + step4 / 1000.0 + "s");
         LumiLogger.Logger.Log("5. Find Min : " + step5 / 1000.0 + "s");
         LumiLogger.Logger.Log("6. Insert LP: " + step6 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Total: " + totalms / 1000.0 + "s, " + (step1 + step2 + step3 + step4 + step5 + step6) / 1000.0 + "s");
+        LumiLogger.Logger.Log("Total: " + (step1 + step2 + step3 + step4 + step5 + step6) / 1000.0 + "s");
+
         return finalPositionsDecimated;
     }
     public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
