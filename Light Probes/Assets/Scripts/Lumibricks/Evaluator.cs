@@ -423,6 +423,7 @@ class Evaluator
 
         return finalPositionsDecimated;
     }
+    
     public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
         // Bit shift the index of the layer (8) to get a bit mask
         int layerMask = 1 << 8; // Corresponds to "Environment"
@@ -467,7 +468,7 @@ class Evaluator
         tetrahedronSH2[3] = bakedprobes[tetrahedralizeIndices[evalTetrahedron * 4 + 3]];
 
         Vector4 weights = evalWeights;
-        if(weights.Equals(Vector4.zero)) // If is insize
+        if(weights.Equals(Vector4.zero)) // If is inside
         {
             // Get Barycentric Weights
             Vector3[] tetrahedronPositions;
@@ -740,7 +741,8 @@ class Evaluator
             invalidPoints.Add(sh2.Equals(shZero));
         }
     }
-    void GenerateUniformSphereSampling() {
+    
+    private void GenerateUniformSphereSampling() {
         evaluationRandomDirections.Clear();
         for (int i = 0; i < evaluationRandomSamplingCount; i++) {
             Vector2 r = new Vector2(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f));
