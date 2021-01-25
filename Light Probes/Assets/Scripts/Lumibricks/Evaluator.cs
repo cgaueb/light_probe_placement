@@ -15,6 +15,7 @@ class Evaluator
         FixedHigh,
         Random
     }
+    bool averageDirections = false;
 
     List<Vector3> evaluationFixedDirections = new List<Vector3> { 
         // LOW  (6)
@@ -60,7 +61,6 @@ class Evaluator
     public Vector3[] tetrahedralizePositions;
     public List<int> evaluationTetrahedron;
     public List<Vector4> evaluationTetrahedronWeights;
-
 #if FAST_IMPL
     public List<bool> evaluationTetrahedronChanged;
     public List<List<int>> mappingEPtoLP;
@@ -84,7 +84,6 @@ class Evaluator
     SolversManager solversManager = null;
 
     public LightProbesEvaluationType EvaluationType { get; set; }
-
 
     #region Constructor Functions
     public Evaluator() {
@@ -112,6 +111,7 @@ class Evaluator
         ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         evaluationRandomSamplingCount = 50;
+        averageDirections = false;
         solversManager.Reset();
         metricsManager.Reset();
     }
@@ -156,6 +156,8 @@ class Evaluator
         } else {
             EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), LumibricksScript.defaultOption);
         }
+        averageDirections = EditorGUILayout.Toggle( 
+            new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, LumibricksScript.defaultOption);
     }
     public bool populateGUI_GenerateReferenceEvaluationPoints() {
         populateGUI_EvaluateDirections();
@@ -228,16 +230,15 @@ class Evaluator
         Color[] evaluationResultsPerDir = new Color[directionsCount];
 
         int j = 0;
-        bool is_avg = true;
         List<Color> currentEvaluationResults;
-        if (is_avg) {
+        if (averageDirections) {
             currentEvaluationResults = new List<Color>(evalPositions.Count);
         } else {
             currentEvaluationResults = new List<Color>(evalPositions.Count * directionsCount);
         }
         foreach (Vector3 pos in evalPositions) {
             if (evaluationTetrahedron[j] == -1) {
-                if (is_avg) {
+                if (averageDirections) {
                     currentEvaluationResults.Add(new Color(0, 0, 0));
                 } else {
                     currentEvaluationResults.AddRange(new Color[directionsCount]);
@@ -248,7 +249,7 @@ class Evaluator
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
                 GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], evaluationTetrahedronWeights[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
-                if (is_avg) {
+                if (averageDirections) {
                     Color uniformSampledEvaluation = new Color(0, 0, 0);
                     for (int i = 0; i < directionsCount; i++) {
                         uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
@@ -267,7 +268,7 @@ class Evaluator
                 SphericalHarmonicsL2 sh2 = new SphericalHarmonicsL2();
                 GetInterpolatedLightProbe(pos, evaluationTetrahedron[j], evaluationTetrahedronWeights[j], bakedprobes, ref sh2);
                 sh2.Evaluate(directions, evaluationResultsPerDir);
-                if (is_avg) {
+                if (averageDirections) {
                     Color uniformSampledEvaluation = new Color(0, 0, 0);
                     for (int i = 0; i < directionsCount; i++) {
                         uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
@@ -280,7 +281,7 @@ class Evaluator
                     currentEvaluationResults.AddRange(evaluationResultsPerDir);
                 }
 #else
-                if (is_avg) {
+                if (averageDirections) {
                     currentEvaluationResults.Add(oldEvaluationResults[j]);
                 } else {
                    currentEvaluationResults.AddRange(oldEvaluationResults.GetRange(j*directionsCount, directionsCount));
@@ -318,6 +319,7 @@ class Evaluator
             "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
+            ", Averaging EP directions: " + averageDirections.ToString() +
             ", Solver: " + solversManager.CurrentSolverType.ToString() +
             ", Metric: " + metricsManager.CurrentMetricType.ToString());
 
