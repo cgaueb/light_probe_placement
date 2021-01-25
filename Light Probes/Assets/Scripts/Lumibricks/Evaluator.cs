@@ -81,7 +81,7 @@ class Evaluator
     public float totalTime = 0.0f;
 
     MetricsManager metricsManager = null;
-    SolverManager solvers = null;
+    SolversManager solversManager = null;
 
     public LightProbesEvaluationType EvaluationType { get; set; }
 
@@ -92,8 +92,8 @@ class Evaluator
         evaluationRandomSamplingCount = 50;
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         metricsManager = new MetricsManager();
-        solvers = new SolverManager();
-        solvers.MetricsManager = metricsManager;
+        solversManager = new SolversManager();
+        solversManager.MetricsManager = metricsManager;
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         for (int i = 0; i < evaluationFixedDirections.Count; ++i) {
             Vector3 v1 = evaluationFixedDirections[i];
@@ -112,7 +112,7 @@ class Evaluator
         ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         evaluationRandomSamplingCount = 50;
-        solvers.Reset();
+        solversManager.Reset();
         metricsManager.Reset();
     }
 
@@ -171,7 +171,7 @@ class Evaluator
 
     public void populateGUI_DecimateSettings() {
         populateGUI_EvaluateDirections();
-        solvers.populateGUI();
+        solversManager.populateGUI();
         metricsManager.populateGUI();
 
         terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, LumibricksScript.defaultOption);
@@ -204,10 +204,10 @@ class Evaluator
     }
 
     public double ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
-        return solvers.computeLoss(estimates, reference);
+        return solversManager.computeLoss(estimates, reference);
     }
     public double EvaluateReference(List<Color> reference) {
-        return solvers.evaluate(reference);
+        return solversManager.evaluate(reference);
     }
 
     public void GenerateReferenceEvaluationPoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
@@ -299,7 +299,7 @@ class Evaluator
         // TODO: potentially add multiple cost functions and error metrics [DONE]
         // TODO: finalize plugin/UI software engineering [ALMOST DONE]
 
-        solvers.SetCurrentSolver();
+        solversManager.SetCurrentSolver();
         metricsManager.SetCurrentMetric();
 
         // store the final result here
@@ -318,7 +318,7 @@ class Evaluator
             "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
-            ", Solver: " + solvers.CurrentSolverType.ToString() +
+            ", Solver: " + solversManager.CurrentSolverType.ToString() +
             ", Metric: " + metricsManager.CurrentMetricType.ToString());
 
 

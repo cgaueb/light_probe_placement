@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-class SolverManager
+class SolversManager
 {
     public enum SolverType
     {
@@ -58,7 +58,7 @@ class SolverManager
     public MetricsManager.MetricType CurrentMetricType {
         get { return metricsManager.CurrentMetricType; }
     }
-    public SolverManager() {
+    public SolversManager() {
         Reset();
     }
     public MetricsManager MetricsManager {
