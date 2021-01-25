@@ -49,7 +49,7 @@ public class LumibricksScript : MonoBehaviour
 
     #region Constructor Functions
     public LumibricksScript() {
-        LumiLogger.Logger.Log("Lumi Script Constructor");
+        LumiLogger.Logger.Log("LumiScript Constructor");
         m_evaluator = new Evaluator();
     }
     #endregion
