@@ -10,6 +10,7 @@ using UnityEngine.Rendering;
 public class LumibricksScript : MonoBehaviour
 {
     #region Public Enum Types
+    public static GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(false), GUILayout.MinWidth(50), GUILayout.MaxWidth(1500) };
     public enum PlacementType {
         Grid,
         Random,
@@ -106,39 +107,13 @@ public class LumibricksScript : MonoBehaviour
         return true;
     }
 
-    public void Reset() {
-        LumiLogger.Logger.Log("Reset entered");
-
-        m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
-
-        LightProbesPlaceType = PlacementType.Poisson;
-        EvaluationPositionsPlaceType = PlacementType.Random;
-
-        Destroy();
-    }
-    private ArrayList populatePlacementPopup() {
-        ArrayList options = new ArrayList();
-        options.AddRange(Enum.GetNames(typeof(PlacementType)));
-        if (!generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
-            options.Remove(PlacementType.NavMesh.ToString());
-            options.Remove(PlacementType.NavMeshVolume.ToString());
-            if (LightProbesPlaceType == PlacementType.NavMesh || LightProbesPlaceType == PlacementType.NavMeshVolume) {
-                LightProbesPlaceType = PlacementType.Poisson;
-            }
-            if (EvaluationPositionsPlaceType == PlacementType.NavMesh || EvaluationPositionsPlaceType == PlacementType.NavMeshVolume) {
-                EvaluationPositionsPlaceType = PlacementType.Random;
-            }
-        }
-        return options;
-    }
-
     public void populateGUI_LightProbes() {
         sceneVolumeLP = EditorGUILayout.ObjectField("LP Volume:", sceneVolumeLP, typeof(GameObject), true) as GameObject;
 
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The LP placement method"));
         string[] options = (string[])populatePlacementPopup().ToArray(typeof(string));
-        PlacementType newLightProbesPlaceType = (PlacementType)EditorGUILayout.Popup((int)LightProbesPlaceType, options);
+        PlacementType newLightProbesPlaceType = (PlacementType)EditorGUILayout.Popup((int)LightProbesPlaceType, options, LumibricksScript.defaultOption);
         EditorGUILayout.EndHorizontal();
 
         //LightProbesPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The LP placement method"), LightProbesPlaceType);
@@ -151,18 +126,13 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void populateGUI_LightProbesRemoveInvalid() {
-        currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
-        currentLightProbesGenerator.populateGUI_RemoveInvalid();
-    }
-
     public void populateGUI_EvaluationPoints() {
         sceneVolumeEP = EditorGUILayout.ObjectField("EP Volume:", sceneVolumeEP, typeof(GameObject), true) as GameObject;
 
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The EP placement method"));
         string[] options = (string[])populatePlacementPopup().ToArray(typeof(string));
-        PlacementType newEvaluationPositionsPlaceType = (PlacementType)EditorGUILayout.Popup((int)EvaluationPositionsPlaceType, options);
+        PlacementType newEvaluationPositionsPlaceType = (PlacementType)EditorGUILayout.Popup((int)EvaluationPositionsPlaceType, options, LumibricksScript.defaultOption);
         EditorGUILayout.EndHorizontal();
 
         //EvaluationPositionsPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The EP placement method"), EvaluationPositionsPlaceType);
@@ -185,30 +155,14 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void populateGUI_EvaluationPointsRemoveInvalid() {
-        currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
-        currentEvaluationPointsGenerator.populateGUI_RemoveInvalid();
-    }
-
     public bool populateGUI_GenerateReferenceEvaluationPoints() {
         return m_evaluator.populateGUI_GenerateReferenceEvaluationPoints();
     }
+    public void populateGUI_DecimateSettings() {
+        m_evaluator.populateGUI_DecimateSettings();
+    }
     public bool populateGUI_Decimate() {
         return m_evaluator.populateGUI_Decimate(this, currentEvaluationPointsGenerator);
-    }
-    public void Destroy() {
-        LumiLogger.Logger.Log("Destroy entered");
-
-        DestroyImmediate(EPMaterial);
-        ResetLightProbes();
-        ResetEvaluationPoints();
-    }
-
-    void Update() {
-        if (transform.hasChanged) {
-            print("The transform has changed!");
-            transform.hasChanged = false;
-        }
     }
 
     public void PlaceLightProbes() {
@@ -253,103 +207,39 @@ public class LumibricksScript : MonoBehaviour
         PlaceEvaluationPoints();
     }
 
-    public void MapEvaluationPointsToLightProbes() {
-        int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
-        LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " + 
-            mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
-    }
-
     public void Bake() {
         Lightmapping.BakeAsync();
-    }
-
-    public void RemoveInvalidLightProbes() {
-        LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
-        // Remove Dark Probes to discard invisible or ones that are hidden inside geometry
-        List<bool> invalidPoints;
-        currentLightProbesGenerator.TotalNumProbes = currentLightProbesGenerator.Positions.Count;
-        m_evaluator.EvaluateBakedLightProbes(LightProbesBakedProbes, out invalidPoints);
-        
-        int count = 0;
-        int original_total = currentLightProbesGenerator.TotalNumProbes;
-        /*for (int i = invalidPoints.Count - 1; i >= 0; --i) {
-            if (!invalidPoints[i]) {
-                continue;
-            }
-            ++count;
-            currentLightProbesGenerator.Positions.RemoveAt(i);
-            LightProbesBakedProbes.RemoveAt(i);
-        }*/
-        //LumiLogger.Logger.Log("Removed " + (count / (float)(currentLightProbesGenerator.Positions.Count)).ToString("0.00%") + " of LPs: " +
-        //  (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
-
-        currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
-
-        // Set Positions to LightProbeGroup
-        LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
-
-        int user_selected_probes = m_evaluator.terminationCurrentLightProbes;
-        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbesSimplified);
-        m_evaluator.terminationCurrentLightProbes = Mathf.Clamp(user_selected_probes, m_evaluator.terminationMinLightProbes, m_evaluator.terminationMaxLightProbes);
-        m_evaluator.invalidLightProbes = count;
-    }
-
-    public void RemoveInvalidEvaluationPoints() {
-        currentEvaluationPointsGenerator.TotalNumProbes = currentEvaluationPointsGenerator.Positions.Count;
-
-        // Evaluation
-        List<bool> invalidPoints;
-        m_evaluator.EvaluateVisibilityPoints(currentEvaluationPointsGenerator.Positions, out invalidPoints);
-
-        int count = 0;
-        int original_total = currentEvaluationPointsGenerator.TotalNumProbes;
-        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
-        // Delete Nodes & Objects
-        for (int i = invalidPoints.Count - 1; i >= 0; --i) {
-            if (invalidPoints[i]) {
-                ++count;
-                Transform epTransform = evaluationObjectParent.transform.Find("Evaluation Point " + i.ToString());
-                if (epTransform) {
-                    DestroyImmediate(epTransform.gameObject);
-                }
-                currentEvaluationPointsGenerator.Positions.RemoveAt(i);
-                continue;
-            }
-        }
-        LumiLogger.Logger.Log("Removed " + (count / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " +
-          (original_total - count).ToString() + " out of " + original_total + " left, " + count.ToString() + " removed");
-        currentEvaluationPointsGenerator.TotalNumProbesSimplified = currentEvaluationPointsGenerator.Positions.Count;
-    }
-    public void GenerateReferenceEvaluationPoints() {
-        m_evaluator.GenerateReferenceEvaluationPoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
-    }
-
-    public void DecimateLightProbes() {
-        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        Lightmapping.Bake();
-        RemoveInvalidLightProbes();
-        MapEvaluationPointsToLightProbes();
-        //RemoveInvalidEvaluationPoints();
-        GenerateReferenceEvaluationPoints();
-
-        currentLightProbesGenerator.TotalNumProbes           = currentLightProbesGenerator.Positions.Count;
-        currentLightProbesGenerator.Positions                = m_evaluator.DecimateBakedLightProbes(this, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
-        currentLightProbesGenerator.TotalNumProbesSimplified = currentLightProbesGenerator.Positions.Count;
-        m_evaluator.decimatedLightProbes = currentLightProbesGenerator.TotalNumProbes - currentLightProbesGenerator.TotalNumProbesSimplified;
-        m_evaluator.finalLightProbes = currentLightProbesGenerator.TotalNumProbesSimplified;
-
-        LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " + m_evaluator.finalLightProbes + " left");
-        // Set Positions to LightProbeGroup
-        LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
-        stopwatch.Stop();
-        m_evaluator.totalTime = (float)(stopwatch.ElapsedMilliseconds / 1000.0);
     }
 
     #endregion
 
     #region Private Functions
+    private void Reset() {
+        LumiLogger.Logger.Log("Reset entered");
 
-    bool UpdateSceneVolume(ref GameObject current, ref GameObject prev, ref Bounds bounds) {
+        LightProbesPlaceType = PlacementType.Grid;
+        EvaluationPositionsPlaceType = PlacementType.Poisson;
+
+        DestroyImmediate(EPMaterial);
+        ResetLightProbes();
+        ResetEvaluationPoints();
+    }
+    private ArrayList populatePlacementPopup() {
+        ArrayList options = new ArrayList();
+        options.AddRange(Enum.GetNames(typeof(PlacementType)));
+        if (!generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
+            options.Remove(PlacementType.NavMesh.ToString());
+            options.Remove(PlacementType.NavMeshVolume.ToString());
+            if (LightProbesPlaceType == PlacementType.NavMesh || LightProbesPlaceType == PlacementType.NavMeshVolume) {
+                LightProbesPlaceType = PlacementType.Poisson;
+            }
+            if (EvaluationPositionsPlaceType == PlacementType.NavMesh || EvaluationPositionsPlaceType == PlacementType.NavMeshVolume) {
+                EvaluationPositionsPlaceType = PlacementType.Random;
+            }
+        }
+        return options;
+    }
+    private bool UpdateSceneVolume(ref GameObject current, ref GameObject prev, ref Bounds bounds) {
         bool no_error = true;
         //if (current != prev)
         {
@@ -458,6 +348,51 @@ public class LumibricksScript : MonoBehaviour
             collider.enabled = false;
         }
     }
-    
+
+    public void DecimateLightProbes() {
+        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // STEP 1. Bake
+        Lightmapping.Bake();        
+        LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
+
+        // STEP 2. Reset light probe and evaluation data
+        // set light probes
+        currentLightProbesGenerator.TotalNumProbes = currentLightProbesGenerator.Positions.Count;
+        // Set Positions to LightProbeGroup
+        LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
+        int userSelectedLightProbes = m_evaluator.terminationCurrentLightProbes;
+        // reset to default state
+        m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
+        // set terminating LP condition according to user selection
+        m_evaluator.terminationCurrentLightProbes = Mathf.Clamp(userSelectedLightProbes, m_evaluator.terminationMinLightProbes, m_evaluator.terminationMaxLightProbes);
+
+        // STEP 3. Map EP to LP
+        m_evaluator.Tetrahedralize(currentLightProbesGenerator.Positions);
+        int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
+        LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " +
+            mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
+
+        // STEP 4. Generate reference
+        m_evaluator.GenerateReferenceEvaluationPoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
+        LumiLogger.Logger.Log("Generate reference EP");
+
+        // STEP 5. Run decimation
+        int num_probes_before_decimation = currentLightProbesGenerator.Positions.Count;
+        var result = m_evaluator.DecimateBakedLightProbes(this, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
+
+        // STEP 6. Finalize
+        currentLightProbesGenerator.Positions = result;
+        m_evaluator.finalLightProbes = currentLightProbesGenerator.Positions.Count;
+        m_evaluator.decimatedLightProbes = num_probes_before_decimation - currentLightProbesGenerator.Positions.Count;
+
+        LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " + m_evaluator.finalLightProbes + " left");
+        // Set Positions to LightProbeGroup
+        LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
+ 
+        stopwatch.Stop();
+        m_evaluator.totalTime = (float)(stopwatch.ElapsedMilliseconds / 1000.0);
+    }
+
     #endregion
 }

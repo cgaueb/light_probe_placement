@@ -16,9 +16,9 @@ public class GeneratorRandom : GeneratorInterface
 
     #region Public Override Functions
     public override void populateGUI_Initialization() {
-        probeCount = EditorGUILayout.IntField(new GUIContent("Number:", "The total number of points"), probeCount);
+        probeCount = EditorGUILayout.IntField(new GUIContent("Number:", "The total number of points"), probeCount, LumibricksScript.defaultOption);
         probeCount = Mathf.Max(1, probeCount);
-        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()));
+        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()), LumibricksScript.defaultOption);
     }
 
     public override void Reset() {
@@ -34,8 +34,7 @@ public class GeneratorRandom : GeneratorInterface
         }
 
         m_positions = positions;
-        m_positions_before = m_positions.Count;
-        m_positions_after = m_positions.Count;
+        m_placed_positions = m_positions.Count;
         return positions;
     }
     #endregion

@@ -52,7 +52,7 @@ class Evaluator
 
     // sampling
     public readonly int[] evaluationFixedCount = new int[] { 6, 14, 26 };
-    public int evaluationRandomSamplingCount = 50;
+    public int evaluationRandomSamplingCount;
     public List<Vector3> evaluationRandomDirections = new List<Vector3>();
 
     // tetrahedral
@@ -78,14 +78,12 @@ class Evaluator
     public int startingLightProbes = 0;
     public int decimatedLightProbes = 0;
     public int finalLightProbes = 0;
-    public int invalidLightProbes = 0;
     public float totalTime = 0.0f;
 
-    SolverManager solvers = new SolverManager();
 
     public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
+    SolverManager solvers = new SolverManager();
 
-    GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.MinWidth(150), GUILayout.MaxWidth(1500) };
 
     #region Constructor Functions
     public Evaluator() {
@@ -110,7 +108,6 @@ class Evaluator
 
     public void ResetLightProbeData(int maxProbes) {
         startingLightProbes = maxProbes;
-        invalidLightProbes = 0;
         finalLightProbes = 0;
         terminationMinLightProbes = 4;
         terminationMaxLightProbes = maxProbes;
@@ -134,16 +131,16 @@ class Evaluator
         evaluationTotal = 0.0f;
     }
     private void populateGUI_EvaluateDirections() {
-        EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType);
+        EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, LumibricksScript.defaultOption);
         if (EvaluationType == LightProbesEvaluationType.Random) {
             int prevCount = evaluationRandomSamplingCount;
-            evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount);
+            evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount, LumibricksScript.defaultOption);
             evaluationRandomSamplingCount = Mathf.Clamp(evaluationRandomSamplingCount, 1, 1000000);
             if (prevCount != evaluationRandomSamplingCount) {
                 GenerateUniformSphereSampling();
             }
         } else {
-            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()));
+            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), LumibricksScript.defaultOption);
         }
     }
     public bool populateGUI_GenerateReferenceEvaluationPoints() {
@@ -151,35 +148,41 @@ class Evaluator
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), defaultOption);
+        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), LumibricksScript.defaultOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
         return clickedGenerateReferenceEvaluationPoints;
     }
 
-    public bool populateGUI_Decimate(LumibricksScript script, GeneratorInterface currentEvaluationPointsGenerator) {
+    public void populateGUI_DecimateSettings() {
         populateGUI_EvaluateDirections();
         solvers.populateGUI();
 
-        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
-        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f);
+        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, LumibricksScript.defaultOption);
+        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f, LumibricksScript.defaultOption);
+    }
 
+    public bool populateGUI_Decimate(LumibricksScript script, GeneratorInterface currentEvaluationPointsGenerator) {
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Cancel", "Cancel the operation"), defaultOption);       
+        bool clickedDecimateLightProbes = false;
+            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer", "Optimizes light probes"), LumibricksScript.defaultOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
         GUILayout.BeginVertical();
-        EditorGUILayout.LabelField(new GUIContent("LPs (Orig/Bad/Final):", "The total number of light probes (Places/bad, e.g. dark/Optimal LPs after decimation)"),
+        GUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("LPs (Orig/Final):", "The total number of light probes (Placed/Optimal LPs after decimation)"),
             new GUIContent(
                   startingLightProbes.ToString() + "/"
-                + invalidLightProbes.ToString() + "/"
-                + finalLightProbes.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00%")));
-        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")));
+                + finalLightProbes.ToString()), LumibricksScript.defaultOption);
+        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), LumibricksScript.defaultOption);
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00") + "%"), LumibricksScript.defaultOption);
+        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")), LumibricksScript.defaultOption);
+        GUILayout.EndHorizontal();
         GUILayout.EndVertical();
 
         return clickedDecimateLightProbes;
@@ -281,6 +284,9 @@ class Evaluator
         // TODO: potentially add multiple cost functions and error metrics [DONE]
         // TODO: finalize plugin/UI software engineering [ALMOST DONE]
 
+        solvers.SetCurrentSolver();
+        solvers.SetCurrentMetric();
+
         // store the final result here
         List<Vector3> finalPositionsDecimated = new List<Vector3>(posIn);
         List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
@@ -343,11 +349,12 @@ class Evaluator
 
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                Tetrahedralize(finalPositionsDecimated);
                 MapEvaluationPointsToLightProbesLocal(finalPositionsDecimated, evaluationPoints);
                 stopwatch.Stop();
                 step2 += stopwatch.ElapsedMilliseconds;
 
-                // 3. Evaluate
+                // 3. Evaluate 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
 #if FAST_IMPL
@@ -483,9 +490,7 @@ class Evaluator
 
     long tetr = 0;
     long mapping = 0;
-
-    public void MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
-
+    public void Tetrahedralize(List<Vector3> probePositions) {
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         Lightmapping.Tetrahedralize(probePositions.ToArray(), out tetrahedralizeIndices, out tetrahedralizePositions);
@@ -495,7 +500,10 @@ class Evaluator
         if (probePositions.Count != tetrahedralizePositions.Length) {
             LumiLogger.Logger.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
         }
+    }
 
+    public void MapEvaluationPointsToLightProbesLocal(List<Vector3> probePositions, List<Vector3> evalPositions) {
+        System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         int tetrahedronCount = tetrahedralizeIndices.Length / 4;
@@ -585,15 +593,6 @@ class Evaluator
 
     public int MapEvaluationPointsToLightProbes(List<Vector3> probePositions, List<Vector3> evalPositions) {
         System.Diagnostics.Stopwatch stopwatch;
-        stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        Lightmapping.Tetrahedralize(probePositions.ToArray(), out tetrahedralizeIndices, out tetrahedralizePositions);
-        stopwatch.Stop();
-        tetr += stopwatch.ElapsedMilliseconds;
-
-        if (probePositions.Count != tetrahedralizePositions.Length) {
-            LumiLogger.Logger.LogWarning("Unity considers Light Probes at the same position (within some tolerance) as duplicates, and does not include them in the tetrahedralization.\n Potential ERROR to the following computations");
-        }
-
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int mapped = 0;
 
@@ -729,17 +728,6 @@ class Evaluator
         t = Vector3.Dot(edge2, qvec) * inv_det;
 
         return true;
-    }
-
-
-    public void EvaluateBakedLightProbes(List<SphericalHarmonicsL2> bakedProbes, out List<bool> invalidPoints) {
-        SphericalHarmonicsL2 shZero = new SphericalHarmonicsL2();
-        shZero.Clear();
-
-        invalidPoints = new List<bool>(bakedProbes.Count);
-        foreach (SphericalHarmonicsL2 sh2 in bakedProbes) {
-            invalidPoints.Add(sh2.Equals(shZero));
-        }
     }
     
     private void GenerateUniformSphereSampling() {

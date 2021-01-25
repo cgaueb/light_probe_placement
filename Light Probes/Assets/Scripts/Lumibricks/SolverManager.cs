@@ -66,9 +66,15 @@ class SolverManager
         }
     }
     public void populateGUI() {
-        CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType);
-        currentSolver = SolverList[CurrentSolverType];
+        CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType, LumibricksScript.defaultOption);
         metricsManager.populateGUI();
+    }
+
+    public void SetCurrentSolver() {
+        currentSolver = SolverList[CurrentSolverType];
+    }
+    public void SetCurrentMetric() {
+        metricsManager.SetCurrentMetric();
     }
 
     private double computeSampleLoss(Color value, Color reference) {

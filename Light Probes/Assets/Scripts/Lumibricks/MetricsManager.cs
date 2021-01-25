@@ -55,7 +55,9 @@ class MetricsManager
     }
 
     public void populateGUI() {
-        CurrentMetricType = (MetricType)EditorGUILayout.EnumPopup(new GUIContent("Metric:", "The metric used to evaluate the values"), CurrentMetricType);
+        CurrentMetricType = (MetricType)EditorGUILayout.EnumPopup(new GUIContent("Metric:", "The metric used to evaluate the values"), CurrentMetricType, LumibricksScript.defaultOption);
+    }
+    public void SetCurrentMetric() {
         currentMetric = LightEvaluationMetricsList[CurrentMetricType];
     }
 

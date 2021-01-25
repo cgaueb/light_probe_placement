@@ -10,8 +10,7 @@ public abstract class GeneratorInterface
 
     #region Protected Variables
     protected List<Vector3> m_positions = null;
-    protected int m_positions_before = 0;
-    protected int m_positions_after = 0;
+    protected int m_placed_positions = 0;
     #endregion
 
     #region Constructor Functions
@@ -28,22 +27,12 @@ public abstract class GeneratorInterface
     #endregion
 
     #region Virtual Functions
-    public virtual void populateGUI_RemoveInvalid() {
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Before:", "The total number of points before Simplification"), new GUIContent(m_positions_before.ToString()));
-        EditorGUILayout.LabelField(new GUIContent("After :", "The total number of points after Simplification"), new GUIContent(m_positions_after.ToString()));
-        EditorGUILayout.EndHorizontal();
-    }
     virtual public string GeneratorName {
         get { return generatorName; }
     }
     virtual public int TotalNumProbes {
-        get { return m_positions_before; }
-        set { m_positions_before = value; }
-    }
-    virtual public int TotalNumProbesSimplified {
-        get { return m_positions_after; }
-        set { m_positions_after = value; }
+        get { return m_placed_positions; }
+        set { m_placed_positions = value; }
     }
     virtual public List<Vector3> Positions {
         get { return m_positions; }

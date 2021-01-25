@@ -7,12 +7,13 @@ using UnityEditor.AnimatedValues;
 public class LightProbesEditor : Editor
 {
     #region Private Variables
-    private AnimBool m_ShowPlacement;
-    private AnimBool m_ShowOptimization;
+    private AnimBool ShowPlacedObjects;
+    private AnimBool ShowConfiguration;
     GUIStyle EditorStylesHeader;
     GUIStyle EditorStylesMainAction;
     GUIStyle EditorStylesFoldoutMainAction;
     GUIStyle EditorStylesSubAction;
+    int selectionGridIndex = 0;
     #endregion
 
     class PopulateGUIResponse
@@ -46,6 +47,7 @@ public class LightProbesEditor : Editor
 
     #region Public Override Functions
     public override void OnInspectorGUI() {
+
         LumibricksScript script = (LumibricksScript)target;
 
         float scale = 0.9f;
@@ -137,100 +139,116 @@ public class LightProbesEditor : Editor
     #endregion
 
     #region Private Functions
-    public void OnInspectorUpdate() {
-        LumiLogger.Logger.Log("OnInspectorUpdate");
-        // Call Repaint on OnInspectorUpdate as it repaints the windows less times as if it was OnGUI/Update
-        Repaint();
-    }
-
-    public void Awake() {
-        LumiLogger.Logger.Log("Awake");
-    }
-    public void OnEnable() {
-        LumiLogger.Logger.Log("OnEnable");
-        m_ShowPlacement = new AnimBool(true);
-        m_ShowPlacement.valueChanged.AddListener(Repaint);
-        m_ShowOptimization = new AnimBool(true);
-        m_ShowOptimization.valueChanged.AddListener(Repaint);
-    }
-    public void OnDisable() {
-        LumiLogger.Logger.Log("OnDisable");
-    }
-
-    void OnDestroy() // [TODO] not activated - we have to destroy EP game objs !
-    {
-        LumiLogger.Logger.Log("OnDestroy entered");
-        LumibricksScript script = (LumibricksScript)target;
-        //script.Destroy();
-    }
-
-    void FinishProcess() {
+    private void FinishProcess() {
         EditorUtility.ClearProgressBar();
         GUIUtility.ExitGUI();
     }
+    private void Awake() {
+        LumiLogger.Logger.Log("Awake");
+    }
+    private void OnDestroy() // [TODO] not activated - we have to destroy EP game objs !
+    {
+        LumiLogger.Logger.Log("OnDestroy");
+        LumibricksScript script = (LumibricksScript)target;
+        //script.Destroy();
+    }
+    private void OnEnable() {
+        LumiLogger.Logger.Log("OnEnable");
+        ShowPlacedObjects = new AnimBool(true);
+        ShowPlacedObjects.valueChanged.AddListener(Repaint);
+        ShowConfiguration = new AnimBool(false);
+        ShowConfiguration.valueChanged.AddListener(Repaint);
+    }
+    private void OnDisable() {
+        LumiLogger.Logger.Log("OnDisable");
+        LumibricksScript script = (LumibricksScript)target;
+    }
 
-    bool populateInspectorGUI() {
+    private bool populateInspectorGUI() {
 
         populateGUIResponse.Reset();
         LumibricksScript script = (LumibricksScript)target;
         if (!script.Init()) {
             return false;
         }
-        GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(false), GUILayout.MinWidth(50), GUILayout.MaxWidth(1500) };
 
         EditorGUILayout.LabelField("Light Probes Cut Algorithm", EditorStylesHeader);
         EditorGUILayout.Space();
 
-        bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto set LP/EP Volumes (Debug)", ""), defaultOption);
-        if (clickedVolumesDebug) {
-            script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
-            script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        {
+            EditorGUILayout.LabelField("Debug Settings", EditorStylesMainAction);
+            EditorGUILayout.Space();
+            EditorGUILayout.BeginHorizontal();
+            {
+                bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto Set Volumes", ""), LumibricksScript.defaultOption);
+                if (clickedVolumesDebug) {
+                    script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
+                    script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
+                }
+                populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), LumibricksScript.defaultOption);
+            }
+            EditorGUILayout.EndHorizontal();
         }
+        EditorGUILayout.EndVertical();
 
-        //m_ShowPlacement.target = EditorGUILayout.ToggleLeft(new GUIContent("1. Placement", "Placement Fields"), m_ShowPlacement.target, EditorStylesMainAction);
-        //if (EditorGUILayout.BeginFadeGroup(m_ShowPlacement.faded)) {
-            
-            m_ShowPlacement.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowPlacement.target, new GUIContent("1. Placement", "Placement Fields"), EditorStylesFoldoutMainAction);
-            if (m_ShowPlacement.target) {
-                EditorGUILayout.LabelField("1.1. Light Probes (LP)", EditorStylesSubAction);
+        EditorGUILayout.Space();
+        EditorGUILayout.Space();
+
+        GUIStyle style = new GUIStyle(EditorStyles.helpBox);
+        EditorGUILayout.BeginVertical(style);
+        {
+            EditorGUILayout.LabelField("Configuration", EditorStylesMainAction);
+            EditorGUILayout.Space();
+            GUIContent[] selStrings = { new GUIContent("Placement", ""), new GUIContent("Settings", "") };
+            selectionGridIndex = GUILayout.SelectionGrid(selectionGridIndex, selStrings, 2, LumibricksScript.defaultOption);
+            EditorGUILayout.Space();
+            if (selectionGridIndex == 0) {
+                ShowPlacedObjects.target = true;
+                ShowConfiguration.target = false;
+            } else {
+                ShowPlacedObjects.target = false;
+                ShowConfiguration.target = true;
+            }
+            //if (EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowPlacement.target, new GUIContent("1. Placement", "Placement Fields"), EditorStylesFoldoutMainAction)) { 
+            if (EditorGUILayout.BeginFadeGroup(ShowPlacedObjects.faded)) {
+                EditorGUILayout.LabelField("Light Probes (LP)", EditorStylesSubAction);
                 script.populateGUI_LightProbes();
                 GUILayout.BeginHorizontal();
-                populateGUIResponse.clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), defaultOption);
-                populateGUIResponse.clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), defaultOption);
+                populateGUIResponse.clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), LumibricksScript.defaultOption);
+                populateGUIResponse.clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), LumibricksScript.defaultOption);
                 GUILayout.EndHorizontal();
                 EditorGUILayout.Space();
 
-                EditorGUILayout.LabelField("1.2. Evaluation Points (EP)", EditorStylesSubAction);
+                EditorGUILayout.LabelField("Evaluation Points (EP)", EditorStylesSubAction);
                 script.populateGUI_EvaluationPoints();
 
-                // Created internally
-                // evaluationPointGeometry = EditorGUILayout.ObjectField("Geometry Representation", evaluationPointGeometry, typeof(GameObject), true) as GameObject;
-
                 GUILayout.BeginHorizontal();
-                populateGUIResponse.clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), defaultOption);
-                populateGUIResponse.clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), defaultOption);
+                populateGUIResponse.clickedResetEvaluationPoints = GUILayout.Button(new GUIContent("Reset", "Reset the evaluation points for this configuration"), LumibricksScript.defaultOption);
+                populateGUIResponse.clickedPlaceEvaluationPoints = GUILayout.Button(new GUIContent("Place", "Place the evaluation points for this configuration"), LumibricksScript.defaultOption);
                 GUILayout.EndHorizontal();
-            //}
+            }
+            EditorGUILayout.EndFadeGroup();
+            if (EditorGUILayout.BeginFadeGroup(ShowConfiguration.faded)) {
+                EditorGUILayout.LabelField("Decimation Settings", EditorStylesSubAction);
+                script.populateGUI_DecimateSettings();
+            }
+            EditorGUILayout.EndFadeGroup();
         }
-        EditorGUILayout.EndFoldoutHeaderGroup();
-        //EditorGUILayout.EndFadeGroup();
+        EditorGUILayout.EndVertical();
 
         EditorGUILayout.Space();
+        EditorGUILayout.Space();
 
-        //m_ShowOptimization.target = EditorGUILayout.ToggleLeft(new GUIContent("2. Simplification", "Simplification Fields"), m_ShowOptimization.target, EditorStylesMainAction);
-        //if (EditorGUILayout.BeginFadeGroup(m_ShowOptimization.faded)) {
-        m_ShowOptimization.target = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowOptimization.target, new GUIContent("2. Decimation", "Decimation Fields"), EditorStylesFoldoutMainAction);
-        if (m_ShowOptimization.target) {
-            GUILayout.BeginHorizontal();
-            populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), defaultOption);
-            GUILayout.EndHorizontal();
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        {
+            EditorGUILayout.LabelField("Decimate Probes", EditorStylesMainAction);
             EditorGUILayout.Space();
             populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate();
         }
-        EditorGUILayout.EndFoldoutHeaderGroup();
-        //EditorGUILayout.EndFadeGroup();
+        EditorGUILayout.EndVertical();
 
-        return true;        
+        return true;
     }
     #endregion
 }
