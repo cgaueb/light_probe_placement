@@ -112,6 +112,10 @@ class Evaluator
         solvers.Reset();
     }
 
+    public void SetLightProbeUserSelection(int userSelectedLightProbes) {
+        terminationCurrentLightProbes = Mathf.Clamp(userSelectedLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
+    }
+
     public void ResetLightProbeData(int maxProbes) {
         startingLightProbes = maxProbes;
         finalLightProbes = 0;

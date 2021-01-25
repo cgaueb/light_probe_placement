@@ -376,7 +376,7 @@ public class LumibricksScript : MonoBehaviour
         // reset to default state
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
         // set terminating LP condition according to user selection
-        m_evaluator.terminationCurrentLightProbes = Mathf.Clamp(userSelectedLightProbes, m_evaluator.terminationMinLightProbes, m_evaluator.terminationMaxLightProbes);
+        m_evaluator.SetLightProbeUserSelection(userSelectedLightProbes);
 
         // STEP 3. Map EP to LP
         m_evaluator.Tetrahedralize(currentLightProbesGenerator.Positions);
