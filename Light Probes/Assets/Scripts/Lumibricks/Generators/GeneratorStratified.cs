@@ -7,7 +7,7 @@ public class GeneratorStratified : GeneratorInterface
 {
     #region Public Variables
     private Vector3Int defaultProbesDims = new Vector3Int(4, 4, 4);
-    private Vector3Int probesDims = new Vector3Int(4, 4, 4);
+    private Vector3Int probesDims;
     #endregion
 
     #region Constructor Functions

@@ -44,7 +44,7 @@ public class LumibricksScript : MonoBehaviour
 
     public LightProbeGroup LightProbeGroup { get; set; } = null;
     public PlacementType LightProbesPlaceType { get; set; } = PlacementType.Grid;
-    public PlacementType EvaluationPositionsPlaceType { get; set; } = PlacementType.Grid;
+    public PlacementType EvaluationPositionsPlaceType { get; set; } = PlacementType.Poisson;
     #endregion
 
     #region Constructor Functions
@@ -165,17 +165,17 @@ public class LumibricksScript : MonoBehaviour
         return m_evaluator.populateGUI_Decimate(this, currentEvaluationPointsGenerator);
     }
 
-    public void PlaceLightProbes() {
+    public void PlaceLightProbes(bool reset) {
         if (!UpdateSceneVolume(ref sceneVolumeLP, ref sceneVolumeLPprev, ref sceneVolumeLPBounds)) {
             return;
         }
-        GenerateLightProbes();
+        GenerateLightProbes(reset);
 
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
         m_evaluator.ResetTime();
     }
 
-    public void ResetLightProbes() {
+    public void ResetLightProbes(bool reset) {
         if (generatorListLightProbes == null) {
             return;
         }
@@ -184,18 +184,18 @@ public class LumibricksScript : MonoBehaviour
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
         currentLightProbesGenerator.Reset();
         // Place the Light Probes
-        PlaceLightProbes();
+        PlaceLightProbes(reset);
     }
-    public void PlaceEvaluationPoints() {
+    public void PlaceEvaluationPoints(bool reset) {
         if (!UpdateSceneVolume(ref sceneVolumeEP, ref sceneVolumeEPprev, ref sceneVolumeEPBounds)) {
             return;
         }
-        GenerateEvaluationPoints();
+        GenerateEvaluationPoints(reset);
         m_evaluator.ResetEvaluationData();
         m_evaluator.ResetTime();
     }
 
-    public void ResetEvaluationPoints() {
+    public void ResetEvaluationPoints(bool reset) {
         if (generatorListEvaluationPoints == null) {
             return;
         }
@@ -204,10 +204,9 @@ public class LumibricksScript : MonoBehaviour
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
         currentEvaluationPointsGenerator.Reset();
         // Place the Evaluation Points
-        PlaceEvaluationPoints();
+        PlaceEvaluationPoints(reset);
     }
-
-    public void Bake() {
+    public void Bake(bool reset) {
         Lightmapping.BakeAsync();
     }
 
@@ -217,12 +216,14 @@ public class LumibricksScript : MonoBehaviour
     private void Reset() {
         LumiLogger.Logger.Log("Reset entered");
 
+        m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
+
         LightProbesPlaceType = PlacementType.Grid;
         EvaluationPositionsPlaceType = PlacementType.Poisson;
 
         DestroyImmediate(EPMaterial);
-        ResetLightProbes();
-        ResetEvaluationPoints();
+        ResetLightProbes(true);
+        ResetEvaluationPoints(true);
     }
     private ArrayList populatePlacementPopup() {
         ArrayList options = new ArrayList();
@@ -277,26 +278,36 @@ public class LumibricksScript : MonoBehaviour
         return true;
     }
 
-    void GenerateLightProbes() {
+    private void GenerateLightProbes(bool reset) {
         // Get Generator
         currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
 
         // Compute Positions
-        currentLightProbesGenerator.GeneratePositions(sceneVolumeLPBounds);
+        if (!reset) {
+            currentLightProbesGenerator.GeneratePositions(sceneVolumeLPBounds);
+        }
 
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
     }
 
-    void GenerateEvaluationPoints() {
+    private void GenerateEvaluationPoints(bool reset) {
         // Get Generator
         currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
 
         // Compute Positions
+        if (reset) {
+            // Destroy the Evaluation Points
+            foreach (var generator in generatorListEvaluationPoints.Keys) {
+                DestroyEvaluationPoints(generatorListEvaluationPoints[generator]);
+            }
+            return;
+        }
+
         List<Vector3> evaluationPositions = currentEvaluationPointsGenerator.GeneratePositions(sceneVolumeEPBounds);
 
         // Destroy the Evaluation Points
-        DestroyEvaluationPoints();
+        DestroyEvaluationPoints(currentEvaluationPointsGenerator);
 
         // Generate new ones
         GameObject evaluationObjectParent = new GameObject("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
@@ -322,10 +333,10 @@ public class LumibricksScript : MonoBehaviour
             SetEvaluationPointProperties(obj, evaluationPositions[i], i, evaluationObjectParent);
         }
     }
-    void DestroyEvaluationPoints() {
-        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
+    void DestroyEvaluationPoints(GeneratorInterface generator) {
+        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
         if (evaluationObjectParent == null) {
-            LumiLogger.Logger.LogWarning("Could not find object: " + "EvaluationGroup_" + currentEvaluationPointsGenerator.GeneratorName);
+            //LumiLogger.Logger.LogWarning("Could not find object: " + "EvaluationGroup_" + generator.GeneratorName);
             return;
         }
         Transform[] evaluationObjectsTransforms = evaluationObjectParent.GetComponentsInChildren<Transform>();
@@ -349,7 +360,7 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public void DecimateLightProbes() {
+    public void DecimateLightProbes(bool reset) {
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // STEP 1. Bake

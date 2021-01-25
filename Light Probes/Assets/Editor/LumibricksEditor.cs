@@ -121,21 +121,6 @@ public class LightProbesEditor : Editor
             RunFunc(script.DecimateLightProbes, "Decimate Light Probes", "Decimate", false);
         }
     }
-    private void RunFunc(System.Action func, string title, string msg, bool show_progress_bar = true) {
-        // Start Process - Generate
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        if (show_progress_bar) {
-            EditorUtility.DisplayProgressBar(title, msg, 0f);
-        }
-        func();
-        if (show_progress_bar) {
-            EditorUtility.DisplayProgressBar(title, msg, 1f);
-        }
-        stopwatch.Stop();
-        LumiLogger.Logger.Log("Done (" + func.Method.Name.ToString() + ": " + stopwatch.ElapsedMilliseconds / 1000.0 + "s)");
-        FinishProcess();
-    }
-
     #endregion
 
     #region Private Functions
@@ -249,6 +234,21 @@ public class LightProbesEditor : Editor
         EditorGUILayout.EndVertical();
 
         return true;
+    }
+    
+    private void RunFunc(System.Action<bool> func, string title, string msg, bool show_progress_bar = true) {
+        // Start Process - Generate
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        if (show_progress_bar) {
+            EditorUtility.DisplayProgressBar(title, msg, 0f);
+        }
+        func(false);
+        if (show_progress_bar) {
+            EditorUtility.DisplayProgressBar(title, msg, 1f);
+        }
+        stopwatch.Stop();
+        LumiLogger.Logger.Log("Done (" + func.Method.Name.ToString() + ": " + stopwatch.ElapsedMilliseconds / 1000.0 + "s)");
+        FinishProcess();
     }
     #endregion
 }

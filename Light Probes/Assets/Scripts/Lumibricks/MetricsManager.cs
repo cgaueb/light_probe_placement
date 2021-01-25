@@ -40,7 +40,7 @@ class MetricsManager
         { MetricType.Luminance, new Metric() }
     };
 
-    public MetricType CurrentMetricType { get; private set; } = MetricType.RGB;
+    public MetricType CurrentMetricType { get; private set; }
 
     private Metric currentMetric;
 
@@ -52,6 +52,11 @@ class MetricsManager
         LightEvaluationMetricsList[MetricType.RGB].colorType = new ColorTypeManager.RGBType();
         LightEvaluationMetricsList[MetricType.Chrominance].colorType = new ColorTypeManager.YCoCgType();
         LightEvaluationMetricsList[MetricType.Luminance].colorType = new ColorTypeManager.YCoCgType();
+        Reset();
+    }
+    
+    public void Reset() {
+        CurrentMetricType = MetricType.Chrominance;
     }
 
     public void populateGUI() {

@@ -80,19 +80,24 @@ class Evaluator
     public int finalLightProbes = 0;
     public float totalTime = 0.0f;
 
+    SolverManager solvers = null;
 
-    public LightProbesEvaluationType EvaluationType { get; set; } = LightProbesEvaluationType.FixedHigh;
-    SolverManager solvers = new SolverManager();
+    public LightProbesEvaluationType EvaluationType { get; set; }
 
 
     #region Constructor Functions
     public Evaluator() {
         LumiLogger.Logger.Log("Evaluator Constructor");
+        evaluationRandomSamplingCount = 50;
+        EvaluationType = LightProbesEvaluationType.FixedHigh;
+        solvers = new SolverManager();
+        EvaluationType = LightProbesEvaluationType.FixedHigh;
         for (int i = 0; i < evaluationFixedDirections.Count; ++i) {
             Vector3 v1 = evaluationFixedDirections[i];
             v1.Normalize();
             evaluationFixedDirections[i] = v1;
         }
+        Reset(4);
     }
     #endregion
 
@@ -104,6 +109,7 @@ class Evaluator
         ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         evaluationRandomSamplingCount = 50;
+        solvers.Reset();
     }
 
     public void ResetLightProbeData(int maxProbes) {
@@ -595,7 +601,6 @@ class Evaluator
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int mapped = 0;
-
 #if FAST_IMPL
         evaluationTetrahedronChanged = new List<bool>(evalPositions.Count);
         mappingEPtoLP = new List<List<int>>(probePositions.Count);
