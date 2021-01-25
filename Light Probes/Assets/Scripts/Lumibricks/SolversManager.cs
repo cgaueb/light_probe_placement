@@ -17,32 +17,46 @@ class SolversManager
     abstract class Solver
     {
         public MetricsManager metricsManager = null;
-
-        public abstract double computeSampleLoss(Color value, Color reference);
+        public virtual double computeLoss(List<Color> estimates, List<Color> reference) {
+            double cost = 0.0;
+            for (int j = 0; j < estimates.Count; j++) {
+                cost += computeSampleLoss(estimates[j], reference[j]);
+            }
+            //cost /= (estimates.Count);
+            return cost;
+        }
+        public virtual double evaluate(List<Color> reference) {
+            double value = 0.0;
+            for (int j = 0; j < reference.Count; j++) {
+                value += evaluateSample(reference[j]);
+            }
+            return value;
+        }
         public double evaluateSample(Color value) {
             throw new System.NotImplementedException();
         }
+        public abstract double computeSampleLoss(Color estimate, Color reference);
     }
 
     class L1NormSolver : Solver
     {
-        public override double computeSampleLoss(Color value, Color reference) {
-            Vector3 res = metricsManager.computeSampleLoss(value, reference);
-            return System.Math.Abs(res.x) + System.Math.Abs(res.y) + System.Math.Abs(res.z);
+        public override double computeSampleLoss(Color estimate, Color reference) {
+            Vector3 sample_cost = metricsManager.computeSampleLoss(estimate, reference);
+            return System.Math.Abs(sample_cost.x) + System.Math.Abs(sample_cost.y) + System.Math.Abs(sample_cost.z);
         }
     }
     class L2NormSolver : Solver
     {
-        public override double computeSampleLoss(Color value, Color reference) {
-            Vector3 res = metricsManager.computeSampleLoss(value, reference);
-            return System.Math.Sqrt(res.x * res.x) + System.Math.Sqrt(res.y * res.y) + System.Math.Sqrt(res.z * res.z);
+        public override double computeSampleLoss(Color estimate, Color reference) {
+            Vector3 sample_cost = metricsManager.computeSampleLoss(estimate, reference);
+            return System.Math.Sqrt(sample_cost.x * sample_cost.x) + System.Math.Sqrt(sample_cost.y * sample_cost.y) + System.Math.Sqrt(sample_cost.z * sample_cost.z);
         }
     }
     class L2NormSquaredSolver : Solver
     {
-        public override double computeSampleLoss(Color value, Color reference) {
-            Vector3 res = metricsManager.computeSampleLoss(value, reference);
-            return (res.x * res.x) + (res.y * res.y) + (res.z * res.z);
+        public override double computeSampleLoss(Color estimate, Color reference) {
+            Vector3 sample_cost = metricsManager.computeSampleLoss(estimate, reference);
+            return (sample_cost.x * sample_cost.x) + (sample_cost.y * sample_cost.y) + (sample_cost.z * sample_cost.z);
         }
     }
     #endregion
@@ -83,30 +97,10 @@ class SolversManager
     public void SetCurrentMetric() {
         metricsManager.SetCurrentMetric();
     }
-
-    private double computeSampleLoss(Color value, Color reference) {
-        return currentSolver.computeSampleLoss(value, reference);
+        public double computeLoss(List<Color> estimates, List<Color> reference) {
+        return currentSolver.computeLoss(estimates, reference);
     }
-
-    private double evaluateSample(Color value) {
-        return currentSolver.evaluateSample(value);
-    }
-
-    public double computeLoss(List<Color> estimates, List<Color> reference) {
-        double cost = 0.0;
-        for (int j = 0; j < estimates.Count; j++) {
-            cost += computeSampleLoss(estimates[j], reference[j]);
-        }
-        //cost /= (estimates.Count);
-        return cost;
-    }
-
     public double evaluate(List<Color> reference) {
-        double cost = 0.0;
-        for (int j = 0; j < reference.Count; j++) {
-            cost += evaluateSample(reference[j]);
-        }
-        //cost /= (estimates.Count);
-        return cost;
+        return currentSolver.evaluate(reference);
     }
 }
