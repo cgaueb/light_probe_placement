@@ -60,7 +60,7 @@ public class LumibricksScript : MonoBehaviour
         var nv = component.GetComponentInChildren<NavMeshAgent>();
 
         if (generatorListLightProbes != null || generatorListEvaluationPoints != null) {
-            if (nv != null && !generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
+            if (nv != null && nv.isOnNavMesh && !generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
                 // dynamically load NavMesh components
                 generatorListLightProbes[PlacementType.NavMesh] = new GeneratorNavMesh(nv);
                 generatorListLightProbes[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
@@ -94,7 +94,11 @@ public class LumibricksScript : MonoBehaviour
         generatorListEvaluationPoints[PlacementType.Poisson] = new GeneratorPoisson();
 
         if (nv == null) {
-            LumiLogger.Logger.LogWarning("No nav mesh volume defined. NavMesh elements will not be loaded");
+            LumiLogger.Logger.LogWarning("No nav mesh agent component. NavMesh placement types will not be loaded");
+            return false;
+        }
+        if (!nv.isOnNavMesh) {
+            LumiLogger.Logger.LogWarning("Nav mesh agent is not bound to any nav mesh. NavMesh placement types will not be loaded");
             return false;
         }
 
