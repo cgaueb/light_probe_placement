@@ -208,9 +208,6 @@ class Evaluator
     public double ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
         return solversManager.computeLoss(estimates, reference);
     }
-    public double EvaluateReference(List<Color> reference) {
-        return solversManager.evaluate(reference);
-    }
 
     public void GenerateReferenceEvaluationPoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
         evaluationResults = EvaluatePoints(bakedprobes, evalPositions, null);
@@ -429,7 +426,7 @@ class Evaluator
 #if FAST_IMPL
             mappingEPtoLP = mappingEPtoLPDecimatedMin.ConvertAll(res => new List<int>(res.ToArray()));
 #endif
-            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Cost: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
+            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
             ++iteration;
         }
         evaluationError = currentEvaluationError;

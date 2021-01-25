@@ -25,16 +25,23 @@ class MetricsManager
                 (converted_value.g - converted_reference.g) * weight.y,
                 (converted_value.b - converted_reference.b) * weight.z);
         }
-        public Vector3 WeightedEvaluation(Color value) {
+        public virtual Vector3[] WeightedEvaluation(Color value, Color reference) {
             Color converted_value = colorType.convertColor(value);
-            return new Vector3(
-                (converted_value.r) * weight.x,
-                (converted_value.g) * weight.y,
-                (converted_value.b) * weight.z);
+            Color converted_reference = colorType.convertColor(reference);
+            return new Vector3[] {
+                new Vector3(
+                    (converted_value.r) * weight.x,
+                    (converted_value.g) * weight.y,
+                    (converted_value.b) * weight.z),
+                new Vector3(
+                    (converted_reference.r) * weight.x,
+                    (converted_reference.g) * weight.y,
+                    (converted_reference.b) * weight.z)
+            };
         }
     }
 
-    Dictionary<MetricType, Metric> LightEvaluationMetricsList = new Dictionary<MetricType, Metric> {
+        Dictionary<MetricType, Metric> LightEvaluationMetricsList = new Dictionary<MetricType, Metric> {
         { MetricType.RGB, new Metric() },
         { MetricType.Chrominance, new Metric() },
         { MetricType.Luminance, new Metric() }
@@ -70,7 +77,7 @@ class MetricsManager
         return currentMetric.WeightedMetric(value, reference);
     }
 
-    public Vector3 evaluateSample(Color value) {
-        return currentMetric.WeightedEvaluation(value);
+    public Vector3[] evaluateSample(Color value, Color reference) {
+        return currentMetric.WeightedEvaluation(value, reference);
     }
 }
