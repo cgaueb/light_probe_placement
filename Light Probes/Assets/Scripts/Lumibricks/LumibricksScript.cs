@@ -254,7 +254,7 @@ public class LumibricksScript : MonoBehaviour
         return no_error;
     }
 
-    bool ComputeSceneVolume(ref GameObject gameObject, ref Bounds bounds) {
+    private bool ComputeSceneVolume(ref GameObject gameObject, ref Bounds bounds) {
         List<Renderer> renderers = new List<Renderer>();
 
         if (gameObject != null) {
@@ -353,7 +353,7 @@ public class LumibricksScript : MonoBehaviour
         DestroyImmediate(evaluationObjectParent);
     }
 
-    void SetEvaluationPointProperties(GameObject obj, Vector3 position, int index, GameObject parenttobject) {
+    private void SetEvaluationPointProperties(GameObject obj, Vector3 position, int index, GameObject parenttobject) {
         obj.transform.position = position;
         obj.transform.parent = parenttobject.transform;
         obj.SetActive(true);
