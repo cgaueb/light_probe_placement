@@ -80,6 +80,7 @@ class Evaluator
     public int finalLightProbes = 0;
     public float totalTime = 0.0f;
 
+    MetricsManager metricsManager = null;
     SolverManager solvers = null;
 
     public LightProbesEvaluationType EvaluationType { get; set; }
@@ -90,7 +91,9 @@ class Evaluator
         LumiLogger.Logger.Log("Evaluator Constructor");
         evaluationRandomSamplingCount = 50;
         EvaluationType = LightProbesEvaluationType.FixedHigh;
+        metricsManager = new MetricsManager();
         solvers = new SolverManager();
+        solvers.MetricsManager = metricsManager;
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         for (int i = 0; i < evaluationFixedDirections.Count; ++i) {
             Vector3 v1 = evaluationFixedDirections[i];
@@ -110,6 +113,7 @@ class Evaluator
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         evaluationRandomSamplingCount = 50;
         solvers.Reset();
+        metricsManager.Reset();
     }
 
     public void SetLightProbeUserSelection(int userSelectedLightProbes) {
@@ -168,6 +172,7 @@ class Evaluator
     public void populateGUI_DecimateSettings() {
         populateGUI_EvaluateDirections();
         solvers.populateGUI();
+        metricsManager.populateGUI();
 
         terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, LumibricksScript.defaultOption);
         terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f, LumibricksScript.defaultOption);
@@ -295,7 +300,7 @@ class Evaluator
         // TODO: finalize plugin/UI software engineering [ALMOST DONE]
 
         solvers.SetCurrentSolver();
-        solvers.SetCurrentMetric();
+        metricsManager.SetCurrentMetric();
 
         // store the final result here
         List<Vector3> finalPositionsDecimated = new List<Vector3>(posIn);
@@ -314,7 +319,7 @@ class Evaluator
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
             ", Solver: " + solvers.CurrentSolverType.ToString() +
-            ", Metric: " + solvers.CurrentMetricType.ToString());
+            ", Metric: " + metricsManager.CurrentMetricType.ToString());
 
 
         long step1 = 0;

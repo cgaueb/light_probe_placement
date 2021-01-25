@@ -11,7 +11,7 @@ class SolverManager
         L2NormSquared
     }
 
-    private MetricsManager metricsManager = new MetricsManager();
+    private MetricsManager metricsManager = null;
 
     #region Solvers
     abstract class Solver
@@ -59,10 +59,16 @@ class SolverManager
         get { return metricsManager.CurrentMetricType; }
     }
     public SolverManager() {
-        // init solvers
-        foreach (var key in SolverList.Keys) {
-            SolverList[key].metricsManager = metricsManager;
-		Reset();
+        Reset();
+    }
+    public MetricsManager MetricsManager {
+        get { return metricsManager; }
+        set {
+            metricsManager = value;
+            foreach (var key in SolverList.Keys) {
+                SolverList[key].metricsManager = metricsManager;
+
+            }
         }
     }
     public void Reset() {
@@ -70,7 +76,6 @@ class SolverManager
     }
     public void populateGUI() {
         CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType, LumibricksScript.defaultOption);
-        metricsManager.populateGUI();
     }
     public void SetCurrentSolver() {
         currentSolver = SolverList[CurrentSolverType];
