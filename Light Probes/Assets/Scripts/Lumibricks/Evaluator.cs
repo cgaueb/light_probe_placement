@@ -445,41 +445,6 @@ class Evaluator
         return finalPositionsDecimated;
     }
     
-    public void EvaluateVisibilityPoints(List<Vector3> posIn, out List<bool> invalidPoints) {
-        // Bit shift the index of the layer (8) to get a bit mask
-        int layerMask = 1 << 8; // Corresponds to "Environment"
-
-        // This would cast rays only against colliders in layer 8.
-        // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
-        //layerMask = ~layerMask;
-
-        invalidPoints = new List<bool>(posIn.Count);
-        for (int i = 0; i < posIn.Count; i++) {
-            invalidPoints.Add(false);
-
-            // 1. Remove Outside of Tetrahedralize
-            if (evaluationTetrahedron[i] == -1) {
-                invalidPoints[i] = true;
-                continue;
-            }
-
-            // 2. Remove Occluded  (if cannot be seen by just one LP)
-            Vector3[] tetrahedronPositions;
-            GetTetrahedronPositions(evaluationTetrahedron[i], out tetrahedronPositions);
-
-            foreach (Vector3 pos in tetrahedronPositions) {
-                Ray visRay = new Ray(posIn[i], pos - posIn[i]);
-                RaycastHit hit;
-                if (Physics.Raycast(visRay, out hit, float.MaxValue, layerMask)) {
-                    // Collision Found
-                    // LumiLogger.Logger.Log("EP" + i + "-> Collision with " + hit.point);
-                    invalidPoints[i] = true;
-                    break;
-                }
-            }
-        }
-    }
-
     void GetInterpolatedLightProbe(Vector3 evalPosition, int evalTetrahedron, Vector4 evalWeights, List<SphericalHarmonicsL2> bakedprobes, ref SphericalHarmonicsL2 sh2) {
         // GetTetrahedronSHs
         SphericalHarmonicsL2[] tetrahedronSH2 = new SphericalHarmonicsL2[4];
