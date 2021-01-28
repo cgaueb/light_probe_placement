@@ -356,7 +356,7 @@ public class LumibricksScript : MonoBehaviour
             SetEvaluationPointProperties(obj, evaluationPositions[i], i, evaluationObjectParent);
         }
     }
-    void DestroyEvaluationPoints(GeneratorInterface generator) {
+    private void DestroyEvaluationPoints(GeneratorInterface generator) {
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
         if (evaluationObjectParent == null) {
             //LumiLogger.Logger.LogWarning("Could not find object: " + "EvaluationGroup_" + generator.GeneratorName);
