@@ -408,6 +408,7 @@ public class LumibricksScript : MonoBehaviour
             mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
 
         // STEP 4. Generate reference
+        m_evaluator.validateDirections();
         m_evaluator.GenerateReferenceEvaluationPoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
         LumiLogger.Logger.Log("Generate reference EP");
 

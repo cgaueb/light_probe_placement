@@ -146,15 +146,19 @@ class Evaluator
         finalLightProbes = 0;
         evaluationError = 0.0f;
     }
+    public void validateDirections() {
+        if (EvaluationType == LightProbesEvaluationType.Random) {
+            if (evaluationRandomDirections.Count != evaluationRandomSamplingCount) {
+                GenerateUniformSphereSampling(out evaluationRandomDirections, evaluationRandomSamplingCount);
+                LumiLogger.Logger.Log("Generated " + evaluationRandomSamplingCount.ToString() + " random evaluation directions");
+            }
+        }
+    }
     private void populateGUI_EvaluateDirections() {
         EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, CustomStyles.defaultGUILayoutOption);
         if (EvaluationType == LightProbesEvaluationType.Random) {
-            int prevCount = evaluationRandomSamplingCount;
             evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount, CustomStyles.defaultGUILayoutOption);
             evaluationRandomSamplingCount = Mathf.Clamp(evaluationRandomSamplingCount, 1, 1000000);
-            if (prevCount != evaluationRandomSamplingCount) {
-                GenerateUniformSphereSampling();
-            }
         } else {
             EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), CustomStyles.defaultGUILayoutOption);
         }
@@ -698,16 +702,16 @@ class Evaluator
         return true;
     }
     
-    private void GenerateUniformSphereSampling() {
-        evaluationRandomDirections.Clear();
-        for (int i = 0; i < evaluationRandomSamplingCount; i++) {
+    private void GenerateUniformSphereSampling(out List<Vector3> directions, int numDirections) {
+        directions = new List<Vector3>(numDirections);
+        for (int i = 0; i < numDirections; i++) {
             Vector2 r = new Vector2(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f));
             float phi = r.x * 2.0f * Mathf.PI;
             float cosTheta = 1.0f - 2.0f * r.y;
             float sinTheta = Mathf.Sqrt(1.0f - cosTheta * cosTheta);
             Vector3 vec = new Vector3(Mathf.Cos(phi) * sinTheta, Mathf.Sin(phi) * sinTheta, cosTheta);
             vec.Normalize();
-            evaluationRandomDirections.Add(vec);
+            directions.Add(vec);
         }
     }
     void GetTetrahedronPositions(int j, out Vector3[] tetrahedronPositions) {
