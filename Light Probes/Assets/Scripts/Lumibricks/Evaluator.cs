@@ -316,7 +316,9 @@ class Evaluator
         }
         return currentEvaluationResults;
     }
-    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions, List<SphericalHarmonicsL2> bakedProbes) {
+    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script,
+        ref bool isCancelled, 
+        List<Vector3> evaluationPoints, List<Vector3> lightProbePositions, List<SphericalHarmonicsL2> bakedProbes) {
         // TODO: add iterate [DONE]
         // TODO: optimize [NOT], e.g. stochastic [DONE]
         // TODO: modify cost function [DONE]
@@ -332,7 +334,6 @@ class Evaluator
         List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
         double currentEvaluationError = 0.0;
         int iteration = 0;
-        bool terminateOnLPSet = isTerminationCurrentLightProbes;
         float termination_error = isTerminationEvaluationError ? terminationEvaluationError : float.MaxValue;
         int termination_probes = isTerminationCurrentLightProbes ? terminationCurrentLightProbes : 0;
 
@@ -360,8 +361,12 @@ class Evaluator
 #if FAST_IMPL
         List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
 #endif
+       
+        float progress_range = terminationMaxLightProbes - terminationCurrentLightProbes;
+        float progress_step = 1 / (progress_range);
+        System.DateTime startTime = System.DateTime.Now;
 
-        while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count) {
+        while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count && !isCancelled) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
@@ -376,7 +381,24 @@ class Evaluator
             List<Color> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
             List<List<int>> mappingEPtoLPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
 #endif
-            for (int i = 0; i < random_samples_each_iteration; i++) {
+
+            float progress = 0.0f; 
+            if (isTerminationCurrentLightProbes) {
+                progress = (lightProbePositions.Count - finalPositionsDecimated.Count) / progress_range;
+            }
+            for (int i = 0; i < random_samples_each_iteration && !isCancelled; i++) {
+                System.TimeSpan interval = (System.DateTime.Now - startTime);
+                string timeText = string.Format("{0:D2}:{1:D2}:{2:D2}", interval.Hours, interval.Minutes, interval.Seconds);
+                //LumiLogger.Logger.Log((progress).ToString("0.0%"));
+                if (isTerminationCurrentLightProbes && isTerminationEvaluationError) {
+                    float internal_progress = progress + (progress_step * i / (float)(random_samples_each_iteration));
+                    isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (internal_progress).ToString("0.0%") + ", Error: " + currentEvaluationError.ToString("0.00") + "%", timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), internal_progress);
+                } else if (isTerminationEvaluationError) {
+                    isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Error: " + currentEvaluationError.ToString("0.00") + "%", timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), progress);
+                } else {
+                    float internal_progress = progress + (progress_step * i / (float)(random_samples_each_iteration));
+                    isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (internal_progress).ToString("0.0%"), timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), internal_progress);
+                  }
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 int random_index = (is_stochastic) ? Random.Range(0, finalPositionsDecimated.Count) : i;
@@ -460,9 +482,26 @@ class Evaluator
             LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
             ++iteration;
         }
-        evaluationError = currentEvaluationError;
 
-        LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00"));
+        {
+            float progress = (lightProbePositions.Count - finalPositionsDecimated.Count) / progress_range;
+            System.TimeSpan interval = (System.DateTime.Now - startTime);
+            string timeText = string.Format("{0:D2}:{1:D2}:{2:D2}", interval.Hours, interval.Minutes, interval.Seconds);
+            LumiLogger.Logger.Log((progress).ToString("0.0%"));
+            if (isTerminationCurrentLightProbes && isTerminationEvaluationError) {
+                isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (progress).ToString("0.0%") + ", Error: " + currentEvaluationError.ToString("0.00") + "%", timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), progress);
+              } else if (isTerminationEvaluationError) {
+                isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Error: " + currentEvaluationError.ToString("0.00") + "%", timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), progress);
+            } else {
+                isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (progress).ToString("0.0%"), timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), progress);
+            }
+        }
+
+        if (!isCancelled) {
+            evaluationError = currentEvaluationError;
+        }
+
+        LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00") + "%");
         LumiLogger.Logger.Log("1. Remove LP: " + step1 / 1000.0 + "s");
         LumiLogger.Logger.Log("2. Remap EPs: " + step2 / 1000.0 + "s");
         LumiLogger.Logger.Log("2.1 Tetrahed: " + tetr / 1000.0 + "s");
