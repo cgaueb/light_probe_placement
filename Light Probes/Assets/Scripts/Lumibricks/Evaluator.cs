@@ -15,7 +15,6 @@ class Evaluator
         FixedHigh,
         Random
     }
-    bool averageDirections = false;
 
     List<Vector3> evaluationFixedDirections = new List<Vector3> { 
         // LOW  (6)
@@ -55,6 +54,7 @@ class Evaluator
     public readonly int[] evaluationFixedCount = new int[] { 6, 14, 26 };
     public int evaluationRandomSamplingCount;
     public List<Vector3> evaluationRandomDirections = new List<Vector3>();
+    bool averageDirections = false;
 
     // tetrahedral
     public int[] tetrahedralizeIndices;
@@ -70,7 +70,6 @@ class Evaluator
     // evaluation
     public List<Color> evaluationResults;
     public double evaluationError = 0.0f;
-    public float evaluationTotal = 0.0f;
     public float terminationEvaluationError = 0.0f;
     public int terminationMinLightProbes = 0;
     public int terminationCurrentLightProbes = 0;
@@ -108,10 +107,12 @@ class Evaluator
     }
 
     public void Reset(int probesCount) {
-        ResetLightProbeData(probesCount);
         EvaluationType = LightProbesEvaluationType.FixedHigh;
-        evaluationRandomSamplingCount = 50;
-        averageDirections = false;
+        evaluationRandomSamplingCount = 32;
+        terminationEvaluationError = 0.1f;
+
+        averageDirections = true;
+        ResetLightProbeData(probesCount);
         solversManager.Reset();
         metricsManager.Reset();
     }
@@ -121,28 +122,29 @@ class Evaluator
     }
 
     public void ResetLightProbeData(int maxProbes) {
-        startingLightProbes = maxProbes;
-        finalLightProbes = 0;
         terminationMinLightProbes = 4;
-        terminationMaxLightProbes = maxProbes;
-        terminationCurrentLightProbes = Mathf.Clamp(terminationMaxLightProbes / 2, terminationMinLightProbes, terminationMaxLightProbes);
+        terminationMaxLightProbes = Mathf.Max(4, maxProbes);
+        startingLightProbes = terminationMaxLightProbes;
+        terminationCurrentLightProbes = Mathf.Clamp((int)(terminationMaxLightProbes / 2), terminationMinLightProbes, terminationMaxLightProbes);
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();
     }
 
     public void ResetEvaluationData() {
-        evaluationResults = null;
-        evaluationTetrahedron = null;
-        evaluationTetrahedronWeights = null;
+        evaluationResults = new List<Color>();
+        evaluationTetrahedron = new List<int>();
+        evaluationTetrahedronWeights = new List<Vector4>();
 #if FAST_IMPL        
-        evaluationTetrahedronChanged = null;
-        mappingEPtoLP = null;
-        mappingEPtoLPDecimated = null;
+        evaluationTetrahedronChanged = new List<bool>();
+        mappingEPtoLP = new List<List<int>>();
+        mappingEPtoLPDecimated = new List<List<int>>();
 #endif
 
         evaluationRandomDirections = new List<Vector3>();
-        evaluationTotal = 0.0f;
+
+        finalLightProbes = 0;
+        evaluationError = 0.0f;
     }
     private void populateGUI_EvaluateDirections() {
         EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, CustomStyles.defaultGUILayoutOption);
