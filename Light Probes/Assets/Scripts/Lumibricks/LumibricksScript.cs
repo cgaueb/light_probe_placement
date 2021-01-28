@@ -168,6 +168,23 @@ public class LumibricksScript : MonoBehaviour
         return m_evaluator.populateGUI_Decimate(this, currentEvaluationPointsGenerator);
     }
 
+    public bool isBaking() {
+        return Lightmapping.bakedGI && Lightmapping.isRunning;
+    }
+    public bool CanPlaceProbes() {
+        return Lightmapping.bakedGI && !Lightmapping.isRunning;
+    }
+    public bool CanUseScript() {
+        return Lightmapping.bakedGI;
+    }
+    public bool CanDecimate() {
+        return
+            Lightmapping.bakedGI &&
+            !Lightmapping.isRunning &&
+            currentLightProbesGenerator.TotalNumProbes > 0 &&
+            currentEvaluationPointsGenerator.TotalNumProbes > 0;
+    }
+
     public void PlaceLightProbes(bool reset) {
         if (!UpdateSceneVolume(ref sceneVolumeLP, ref sceneVolumeLPprev, ref sceneVolumeLPBounds)) {
             return;
@@ -210,7 +227,13 @@ public class LumibricksScript : MonoBehaviour
         PlaceEvaluationPoints(reset);
     }
     public void Bake(bool reset) {
+        if (isBaking()) {
+            Lightmapping.Cancel();
+            LumiLogger.Logger.Log("Bake cancelled");
+            return;
+        }
         Lightmapping.BakeAsync();
+        LumiLogger.Logger.Log("Bake started");
     }
 
     #endregion

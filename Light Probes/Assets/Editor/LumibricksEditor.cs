@@ -134,11 +134,19 @@ public class LightProbesEditor : Editor
             return false;
         }
 
-        EditorGUILayout.LabelField("Light Probes Cut Algorithm", CustomStyles.EditorStylesHeader);
-        EditorGUILayout.Space();
+        if (!script.CanUseScript()) {
+            EditorGUILayout.LabelField("Warning! Baked Global Illumination must be enabled to use this script!", CustomStyles.EditorErrorRed);
+            EditorGUILayout.Space();
+        }
 
-        //EditorGUI.BeginDisabledGroup(script.isWorkerRunning());
-        EditorGUI.BeginDisabledGroup(false);
+        EditorGUI.BeginDisabledGroup(!script.CanUseScript());
+        {
+            EditorGUILayout.LabelField("Light Probes Cut Algorithm", CustomStyles.EditorStylesHeader);
+            EditorGUILayout.Space();
+        }
+        EditorGUI.EndDisabledGroup();
+
+        EditorGUI.BeginDisabledGroup(!script.CanUseScript());
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             {
@@ -151,7 +159,9 @@ public class LightProbesEditor : Editor
                         script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
                         script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
                     }
-                    populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(new GUIContent("Bake Light Probes (Async)", "Bake light probes"), CustomStyles.defaultGUILayoutOption);
+                    populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(
+                        !script.isBaking() ? new GUIContent("Bake Light Probes (Async)", "Bake light probes") : new GUIContent("Cancel Bake", "Cancel Baking of light probes")
+                        , CustomStyles.defaultGUILayoutOption);
                 }
                 EditorGUILayout.EndHorizontal();
             }
@@ -177,12 +187,14 @@ public class LightProbesEditor : Editor
                 }
                 //if (EditorGUILayout.BeginFoldoutHeaderGroup(m_ShowPlacement.target, new GUIContent("1. Placement", "Placement Fields"), EditorStylesFoldoutMainAction)) { 
                 if (EditorGUILayout.BeginFadeGroup(ShowPlacedObjects.faded)) {
+                    EditorGUI.BeginDisabledGroup(!script.CanPlaceProbes());
                     EditorGUILayout.LabelField("Light Probes (LP)", CustomStyles.EditorStylesSubAction);
                     script.populateGUI_LightProbes();
                     GUILayout.BeginHorizontal();
                     populateGUIResponse.clickedResetLightProbes = GUILayout.Button(new GUIContent("Reset", "Reset the Light Probes for this configuration"), CustomStyles.defaultGUILayoutOption);
                     populateGUIResponse.clickedPlaceLightProbes = GUILayout.Button(new GUIContent("Place", "Place the Light Probes for this configuration"), CustomStyles.defaultGUILayoutOption);
                     GUILayout.EndHorizontal();
+                    EditorGUI.EndDisabledGroup();
                     EditorGUILayout.Space();
 
                     EditorGUILayout.LabelField("Evaluation Points (EP)", CustomStyles.EditorStylesSubAction);
@@ -201,19 +213,22 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.EndFadeGroup();
             }
             EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+
+            EditorGUI.BeginDisabledGroup(!script.CanDecimate());
+            {
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                {
+                    EditorGUILayout.LabelField("Decimate Probes", CustomStyles.EditorStylesMainAction);
+                    EditorGUILayout.Space();
+                    populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate();
+                }
+                EditorGUILayout.EndVertical();
+            }
         }
         EditorGUI.EndDisabledGroup();
-
-        EditorGUILayout.Space();
-        EditorGUILayout.Space();
-
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        {
-            EditorGUILayout.LabelField("Decimate Probes", CustomStyles.EditorStylesMainAction);
-            EditorGUILayout.Space();
-            populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate();
-        }
-        EditorGUILayout.EndVertical();
 
         return true;
     }
