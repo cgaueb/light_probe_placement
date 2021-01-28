@@ -179,7 +179,8 @@ public class LumibricksScript : MonoBehaviour
             Lightmapping.bakedGI &&
             !Lightmapping.isRunning &&
             currentLightProbesGenerator.TotalNumProbes > 0 &&
-            currentEvaluationPointsGenerator.TotalNumProbes > 0;
+            currentEvaluationPointsGenerator.TotalNumProbes > 0 && 
+            (m_evaluator.isTerminationEvaluationError || m_evaluator.isTerminationCurrentLightProbes);
     }
 
     public void PlaceLightProbes(bool reset) {

@@ -71,6 +71,8 @@ class Evaluator
     public List<Color> evaluationResults;
     public double evaluationError = 0.0f;
     public float terminationEvaluationError = 0.0f;
+    public bool isTerminationCurrentLightProbes = true;
+    public bool isTerminationEvaluationError = true;
     public int terminationMinLightProbes = 0;
     public int terminationCurrentLightProbes = 0;
     public int terminationMaxLightProbes = 0;
@@ -109,6 +111,8 @@ class Evaluator
     public void Reset(int probesCount) {
         EvaluationType = LightProbesEvaluationType.FixedHigh;
         evaluationRandomSamplingCount = 32;
+        isTerminationCurrentLightProbes = true;
+        isTerminationEvaluationError = false;
         terminationEvaluationError = 0.1f;
 
         averageDirections = true;
@@ -171,8 +175,24 @@ class Evaluator
         solversManager.populateGUI();
         metricsManager.populateGUI();
 
-        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, CustomStyles.defaultGUILayoutOption);
-        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f, CustomStyles.defaultGUILayoutOption);
+        GUILayout.BeginHorizontal();
+        isTerminationCurrentLightProbes = EditorGUILayout.Toggle(
+              new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), isTerminationCurrentLightProbes);
+        EditorGUI.BeginDisabledGroup(!isTerminationCurrentLightProbes);
+        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("", ""), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, CustomStyles.defaultGUILayoutOption);
+        EditorGUI.EndDisabledGroup();
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        isTerminationEvaluationError = EditorGUILayout.Toggle(
+            new GUIContent("Maximum Error:", "The percentage error after which the decimation stops"), isTerminationEvaluationError);
+        EditorGUI.BeginDisabledGroup(!isTerminationEvaluationError);
+        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("",""), terminationEvaluationError, 0.1f, 100.0f, CustomStyles.defaultGUILayoutOption);
+        EditorGUI.EndDisabledGroup();
+        GUILayout.EndHorizontal();
+        if (!isTerminationCurrentLightProbes && !isTerminationEvaluationError) {
+            EditorGUILayout.LabelField(new GUIContent("Warning: You need to use at least one terminating condition!", 
+                "At least one of Minimum LP Set and Minimum Error must be selected."), CustomStyles.EditorErrorRed, CustomStyles.defaultGUILayoutOption);
+        }
     }
 
     public bool populateGUI_Decimate(LumibricksScript script, GeneratorInterface currentEvaluationPointsGenerator) {
@@ -184,15 +204,15 @@ class Evaluator
 
         GUILayout.BeginVertical();
         GUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00") + "%"), CustomStyles.defaultGUILayoutOption);
         EditorGUILayout.LabelField(new GUIContent("LPs (Orig/Final):", "The total number of light probes (Placed/Optimal LPs after decimation)"),
-            new GUIContent(
-                  startingLightProbes.ToString() + "/"
-                + finalLightProbes.ToString()), CustomStyles.defaultGUILayoutOption);
-        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), CustomStyles.defaultGUILayoutOption);
+        new GUIContent(
+        startingLightProbes.ToString() + "/"
+         +finalLightProbes.ToString()), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00") + "%"), CustomStyles.defaultGUILayoutOption);
         EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")), CustomStyles.defaultGUILayoutOption);
+        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
 
@@ -283,7 +303,7 @@ class Evaluator
         }
         return currentEvaluationResults;
     }
-    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, List<Vector3> evaluationPoints, List<Vector3> posIn, List<SphericalHarmonicsL2> bakedProbes) {
+    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions, List<SphericalHarmonicsL2> bakedProbes) {
         // TODO: add iterate [DONE]
         // TODO: optimize [NOT], e.g. stochastic [DONE]
         // TODO: modify cost function [DONE]
@@ -295,25 +315,25 @@ class Evaluator
         metricsManager.SetCurrentMetric();
 
         // store the final result here
-        List<Vector3> finalPositionsDecimated = new List<Vector3>(posIn);
+        List<Vector3> finalPositionsDecimated = new List<Vector3>(lightProbePositions);
         List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
-
-        double maxError = 0.1;
         double currentEvaluationError = 0.0;
         int iteration = 0;
-        int remaining_probes = terminationCurrentLightProbes;
         bool is_stochastic = false;
         int num_stochastic_samples = 20;
+        bool terminateOnLPSet = isTerminationCurrentLightProbes;
+        float termination_error = isTerminationEvaluationError ? terminationEvaluationError : float.MaxValue;
+        int termination_probes = isTerminationCurrentLightProbes ? terminationCurrentLightProbes : 0;
 
-        LumiLogger.Logger.Log("Starting Decimation: maxError: " + maxError.ToString() + ", minimum probes: " + remaining_probes + ", stochastic: " + (is_stochastic ? "True" : "False"));
-        LumiLogger.Logger.Log("Settings: " +
+        LumiLogger.Logger.Log("Starting Decimation. Settings: " +
             "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
             ", Averaging EP directions: " + averageDirections.ToString() +
             ", Solver: " + solversManager.CurrentSolverType.ToString() +
-            ", Metric: " + metricsManager.CurrentMetricType.ToString());
-
+            ", Metric: " + metricsManager.CurrentMetricType.ToString() +
+            ", Minimum Error: " + (isTerminationEvaluationError ? termination_error.ToString() : "Disabled") +
+            ", Minimum LP Set: " + (isTerminationCurrentLightProbes ? termination_probes.ToString() : "Disabled"));
 
         long step1 = 0;
         long step2 = 0;
@@ -329,7 +349,7 @@ class Evaluator
         List<Color> decimatedEvaluationResults = evaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
 #endif
 
-        while (/*currentEvaluationError < maxError && */remaining_probes < finalPositionsDecimated.Count) {
+        while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
@@ -412,6 +432,11 @@ class Evaluator
                 LumiLogger.Logger.LogError("No probe found during the iteration");
             }
 
+            // if we have terminated on error, skip this iteration
+            if (isTerminationEvaluationError && decimatedCostMin > termination_error) {
+                LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Stopping using max error criteria");
+                break;
+            }
             // 6. Remove light probe with the minimum error
             finalPositionsDecimated.RemoveAt(decimatedIndex);
             finalLightProbesDecimated.RemoveAt(decimatedIndex);
