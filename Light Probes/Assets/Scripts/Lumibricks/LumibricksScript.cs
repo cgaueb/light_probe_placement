@@ -158,9 +158,6 @@ public class LumibricksScript : MonoBehaviour
         }
     }
 
-    public bool populateGUI_GenerateReferenceEvaluationPoints() {
-        return m_evaluator.populateGUI_GenerateReferenceEvaluationPoints();
-    }
     public void populateGUI_DecimateSettings() {
         m_evaluator.populateGUI_DecimateSettings();
     }

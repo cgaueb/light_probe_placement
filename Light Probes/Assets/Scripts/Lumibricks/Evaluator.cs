@@ -159,17 +159,6 @@ class Evaluator
         averageDirections = EditorGUILayout.Toggle(
             new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, CustomStyles.defaultGUILayoutOption);
     }
-    public bool populateGUI_GenerateReferenceEvaluationPoints() {
-        populateGUI_EvaluateDirections();
-
-        GUILayout.BeginHorizontal();
-        GUILayout.FlexibleSpace();
-        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), CustomStyles.defaultGUILayoutOption);
-        GUILayout.FlexibleSpace();
-        GUILayout.EndHorizontal();
-
-        return clickedGenerateReferenceEvaluationPoints;
-    }
 
     public void populateGUI_DecimateSettings() {
         populateGUI_EvaluateDirections();
