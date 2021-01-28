@@ -145,26 +145,26 @@ class Evaluator
         evaluationTotal = 0.0f;
     }
     private void populateGUI_EvaluateDirections() {
-        EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, LumibricksScript.defaultOption);
+        EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, CustomStyles.defaultGUILayoutOption);
         if (EvaluationType == LightProbesEvaluationType.Random) {
             int prevCount = evaluationRandomSamplingCount;
-            evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount, LumibricksScript.defaultOption);
+            evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount, CustomStyles.defaultGUILayoutOption);
             evaluationRandomSamplingCount = Mathf.Clamp(evaluationRandomSamplingCount, 1, 1000000);
             if (prevCount != evaluationRandomSamplingCount) {
                 GenerateUniformSphereSampling();
             }
         } else {
-            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), LumibricksScript.defaultOption);
+            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), CustomStyles.defaultGUILayoutOption);
         }
-        averageDirections = EditorGUILayout.Toggle( 
-            new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, LumibricksScript.defaultOption);
+        averageDirections = EditorGUILayout.Toggle(
+            new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, CustomStyles.defaultGUILayoutOption);
     }
     public bool populateGUI_GenerateReferenceEvaluationPoints() {
         populateGUI_EvaluateDirections();
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), LumibricksScript.defaultOption);
+        bool clickedGenerateReferenceEvaluationPoints = GUILayout.Button(new GUIContent("Generate Reference EP", "Generate Reference Evaluation Points"), CustomStyles.defaultGUILayoutOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
@@ -176,15 +176,14 @@ class Evaluator
         solversManager.populateGUI();
         metricsManager.populateGUI();
 
-        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, LumibricksScript.defaultOption);
-        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f, LumibricksScript.defaultOption);
+        terminationCurrentLightProbes = EditorGUILayout.IntSlider(new GUIContent("Minimum LP set:", "The minimum desired number of light probes"), terminationCurrentLightProbes, terminationMinLightProbes, terminationMaxLightProbes, CustomStyles.defaultGUILayoutOption);
+        terminationEvaluationError = EditorGUILayout.Slider(new GUIContent("Minimum error (unused):", "The minimum desired evaluation percentage error"), terminationEvaluationError, 0.0f, 100.0f, CustomStyles.defaultGUILayoutOption);
     }
 
     public bool populateGUI_Decimate(LumibricksScript script, GeneratorInterface currentEvaluationPointsGenerator) {
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = false;
-            clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer", "Optimizes light probes"), LumibricksScript.defaultOption);
+        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimizer", "Optimizes light probes"), CustomStyles.defaultGUILayoutOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
@@ -193,12 +192,12 @@ class Evaluator
         EditorGUILayout.LabelField(new GUIContent("LPs (Orig/Final):", "The total number of light probes (Placed/Optimal LPs after decimation)"),
             new GUIContent(
                   startingLightProbes.ToString() + "/"
-                + finalLightProbes.ToString()), LumibricksScript.defaultOption);
-        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), LumibricksScript.defaultOption);
+                + finalLightProbes.ToString()), CustomStyles.defaultGUILayoutOption);
+        EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00") + "%"), LumibricksScript.defaultOption);
-        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")), LumibricksScript.defaultOption);
+        EditorGUILayout.LabelField(new GUIContent("Error: ", "The resulting error compared to the original estimation"), new GUIContent(evaluationError.ToString("0.00") + "%"), CustomStyles.defaultGUILayoutOption);
+        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
 

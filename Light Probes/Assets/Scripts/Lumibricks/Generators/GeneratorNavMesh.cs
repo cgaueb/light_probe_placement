@@ -16,7 +16,7 @@ public class GeneratorNavMesh : GeneratorInterface
     #region Public Override Functions
     public override void populateGUI_Initialization() {
         this.navMeshAgent = EditorGUILayout.ObjectField("Navigation Mesh Agent:", navMeshAgent, typeof(UnityEngine.AI.NavMeshAgent), true) as NavMeshAgent;
-        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()), LumibricksScript.defaultOption);
+        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()), CustomStyles.defaultGUILayoutOption);
     }
 
     public override void Reset() {

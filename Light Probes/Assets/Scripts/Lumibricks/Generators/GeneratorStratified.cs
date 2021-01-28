@@ -16,9 +16,9 @@ public class GeneratorStratified : GeneratorInterface
 
     #region Public Override Functions
     public override void populateGUI_Initialization() {
-        probesDims = EditorGUILayout.Vector3IntField(new GUIContent("Grid Size:", "The size of the 3D grid"), probesDims, LumibricksScript.defaultOption);
+        probesDims = EditorGUILayout.Vector3IntField(new GUIContent("Grid Size:", "The size of the 3D grid"), probesDims, CustomStyles.defaultGUILayoutOption);
         probesDims = Vector3Int.Max(new Vector3Int(1, 1, 1), probesDims);
-        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()), LumibricksScript.defaultOption);
+        EditorGUILayout.LabelField(new GUIContent("Placed:", "The total number of placed points"), new GUIContent(m_positions.Count.ToString()), CustomStyles.defaultGUILayoutOption);
     }
 
     public override void Reset() {

@@ -115,7 +115,7 @@ class SolversManager
         CurrentSolverType = SolverType.MaxPercentileError;
     }
     public void populateGUI() {
-        CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType, LumibricksScript.defaultOption);
+        CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType, CustomStyles.defaultGUILayoutOption);
     }
     public void SetCurrentSolver() {
         currentSolver = SolverList[CurrentSolverType];

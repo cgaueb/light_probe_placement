@@ -10,7 +10,6 @@ using UnityEngine.Rendering;
 public class LumibricksScript : MonoBehaviour
 {
     #region Public Enum Types
-    public static GUILayoutOption[] defaultOption = new GUILayoutOption[] { GUILayout.ExpandWidth(false), GUILayout.MinWidth(50), GUILayout.MaxWidth(1500) };
     public enum PlacementType {
         Grid,
         Random,
@@ -117,7 +116,7 @@ public class LumibricksScript : MonoBehaviour
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The LP placement method"));
         string[] options = (string[])populatePlacementPopup().ToArray(typeof(string));
-        PlacementType newLightProbesPlaceType = (PlacementType)EditorGUILayout.Popup((int)LightProbesPlaceType, options, LumibricksScript.defaultOption);
+        PlacementType newLightProbesPlaceType = (PlacementType)EditorGUILayout.Popup((int)LightProbesPlaceType, options, CustomStyles.defaultGUILayoutOption);
         EditorGUILayout.EndHorizontal();
 
         //LightProbesPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The LP placement method"), LightProbesPlaceType);
@@ -136,7 +135,7 @@ public class LumibricksScript : MonoBehaviour
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.PrefixLabel(new GUIContent("Placement Type:", "The EP placement method"));
         string[] options = (string[])populatePlacementPopup().ToArray(typeof(string));
-        PlacementType newEvaluationPositionsPlaceType = (PlacementType)EditorGUILayout.Popup((int)EvaluationPositionsPlaceType, options, LumibricksScript.defaultOption);
+        PlacementType newEvaluationPositionsPlaceType = (PlacementType)EditorGUILayout.Popup((int)EvaluationPositionsPlaceType, options, CustomStyles.defaultGUILayoutOption);
         EditorGUILayout.EndHorizontal();
 
         //EvaluationPositionsPlaceType = (LumibricksScript.PlacementType)EditorGUILayout.EnumPopup(new GUIContent("Placement Type:", "The EP placement method"), EvaluationPositionsPlaceType);
