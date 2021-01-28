@@ -397,10 +397,11 @@ public class LumibricksScript : MonoBehaviour
         // Set Positions to LightProbeGroup
         LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
         int userSelectedLightProbes = m_evaluator.terminationCurrentLightProbes;
+        int userSelectedStochasticSamples = m_evaluator.num_stochastic_samples;
         // reset to default state
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
         // set terminating LP condition according to user selection
-        m_evaluator.SetLightProbeUserSelection(userSelectedLightProbes);
+        m_evaluator.SetLightProbeUserSelection(userSelectedLightProbes, userSelectedStochasticSamples);
 
         // STEP 3. Map EP to LP
         m_evaluator.Tetrahedralize(currentLightProbesGenerator.Positions);

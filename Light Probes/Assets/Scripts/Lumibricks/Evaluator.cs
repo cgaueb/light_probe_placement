@@ -55,6 +55,8 @@ class Evaluator
     public int evaluationRandomSamplingCount;
     public List<Vector3> evaluationRandomDirections = new List<Vector3>();
     bool averageDirections = false;
+    bool is_stochastic = false;
+    public int num_stochastic_samples;
 
     // tetrahedral
     public int[] tetrahedralizeIndices;
@@ -114,15 +116,17 @@ class Evaluator
         isTerminationCurrentLightProbes = true;
         isTerminationEvaluationError = false;
         terminationEvaluationError = 0.1f;
-
+        is_stochastic = false;
+        num_stochastic_samples = 20;
         averageDirections = true;
         ResetLightProbeData(probesCount);
         solversManager.Reset();
         metricsManager.Reset();
     }
 
-    public void SetLightProbeUserSelection(int userSelectedLightProbes) {
+    public void SetLightProbeUserSelection(int userSelectedLightProbes, int userSelectedStochasticSamples) {
         terminationCurrentLightProbes = Mathf.Clamp(userSelectedLightProbes, terminationMinLightProbes, terminationMaxLightProbes);
+        num_stochastic_samples = Mathf.Clamp(userSelectedStochasticSamples, 1, terminationMaxLightProbes);
     }
 
     public void ResetLightProbeData(int maxProbes) {
@@ -130,6 +134,7 @@ class Evaluator
         terminationMaxLightProbes = Mathf.Max(4, maxProbes);
         startingLightProbes = terminationMaxLightProbes;
         terminationCurrentLightProbes = Mathf.Clamp((int)(terminationMaxLightProbes / 2), terminationMinLightProbes, terminationMaxLightProbes);
+        num_stochastic_samples = Mathf.Clamp(terminationCurrentLightProbes/2, 1, terminationMaxLightProbes);
         tetrahedralizeIndices = null;
         tetrahedralizePositions = null;
         ResetEvaluationData();
@@ -172,6 +177,14 @@ class Evaluator
 
     public void populateGUI_DecimateSettings() {
         populateGUI_EvaluateDirections();
+        GUILayout.BeginHorizontal();
+        is_stochastic = EditorGUILayout.Toggle(
+               new GUIContent("Stochastic Decimation", "Decimate against a random subset in each iteration instead all LPs"), is_stochastic);
+        EditorGUI.BeginDisabledGroup(!is_stochastic);
+        num_stochastic_samples = EditorGUILayout.IntSlider(new GUIContent("", ""), num_stochastic_samples, 1, terminationMaxLightProbes, CustomStyles.defaultGUILayoutOption);
+        num_stochastic_samples = Mathf.Clamp(num_stochastic_samples, 1, terminationMaxLightProbes);
+        EditorGUI.EndDisabledGroup();
+        GUILayout.EndHorizontal();
         solversManager.populateGUI();
         metricsManager.populateGUI();
 
@@ -319,8 +332,6 @@ class Evaluator
         List<SphericalHarmonicsL2> finalLightProbesDecimated = new List<SphericalHarmonicsL2>(bakedProbes);
         double currentEvaluationError = 0.0;
         int iteration = 0;
-        bool is_stochastic = false;
-        int num_stochastic_samples = 20;
         bool terminateOnLPSet = isTerminationCurrentLightProbes;
         float termination_error = isTerminationEvaluationError ? terminationEvaluationError : float.MaxValue;
         int termination_probes = isTerminationCurrentLightProbes ? terminationCurrentLightProbes : 0;
@@ -330,6 +341,7 @@ class Evaluator
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
             ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
             ", Averaging EP directions: " + averageDirections.ToString() +
+            ", Stochastic: " + (is_stochastic ? num_stochastic_samples.ToString() : "Disabled") +
             ", Solver: " + solversManager.CurrentSolverType.ToString() +
             ", Metric: " + metricsManager.CurrentMetricType.ToString() +
             ", Minimum Error: " + (isTerminationEvaluationError ? termination_error.ToString() : "Disabled") +
@@ -367,7 +379,7 @@ class Evaluator
             for (int i = 0; i < random_samples_each_iteration; i++) {
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                int random_index = (is_stochastic) ? Random.Range(0, random_samples_each_iteration) : i;
+                int random_index = (is_stochastic) ? Random.Range(0, finalPositionsDecimated.Count) : i;
                 Vector3 last_position_removed = finalPositionsDecimated[random_index];
                 finalPositionsDecimated.RemoveAt(random_index);
                 SphericalHarmonicsL2 last_SH_removed = finalLightProbesDecimated[random_index];
