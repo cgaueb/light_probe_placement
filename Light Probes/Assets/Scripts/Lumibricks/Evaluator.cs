@@ -366,7 +366,7 @@ class Evaluator
         float progress_step = 1 / (progress_range);
         System.DateTime startTime = System.DateTime.Now;
 
-        while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count && !isCancelled) {
+        while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count && finalPositionsDecimated.Count > 4 && !isCancelled) {
             // remove the Probe which contributes "the least" to the reference
             // Optimize: don't iterate against all every time
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
