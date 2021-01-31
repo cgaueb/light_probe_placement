@@ -385,13 +385,11 @@ public class LumibricksScript : MonoBehaviour
     public void DecimateLightProbes(bool reset) {
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        List<SphericalHarmonicsL2> LightProbesBakedProbes = null;
         bool isCancelled = false;
         // STEP 1. Bake
         isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Baking", 0.0f);
         Lightmapping.Bake();
         if (!isCancelled) {
-            LightProbesBakedProbes = new List<SphericalHarmonicsL2>(LightmapSettings.lightProbes.bakedProbes);
         }
 
         // STEP 2. Reset light probe and evaluation data
@@ -407,22 +405,29 @@ public class LumibricksScript : MonoBehaviour
             m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
             // set terminating LP condition according to user selection
             m_evaluator.SetLightProbeUserSelection(userSelectedLightProbes, userSelectedStochasticSamples);
+
+            // set current probe data
+            m_evaluator.SetProbeData(LightmapSettings.lightProbes.bakedProbes);
         }
 
         // STEP 3. Map EP to LP
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Mapping EP to LP", 0.0f);
             m_evaluator.Tetrahedralize(currentLightProbesGenerator.Positions);
-            int mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
-            LumiLogger.Logger.Log("Mapped " + (mapped / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + " of EPs: " +
-                mapped.ToString() + " out of " + currentEvaluationPointsGenerator.Positions.Count + " (" + (currentEvaluationPointsGenerator.Positions.Count - mapped).ToString() + " unmapped)");
+            LumiLogger.Logger.Log("Mapped " + currentLightProbesGenerator.Positions.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals");
+            (int, int) mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
+            LumiLogger.Logger.Log("Mapped " + currentEvaluationPointsGenerator.Positions.Count + " EPs: " +
+                mapped.Item1.ToString() + " (" + (mapped.Item1 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to tetrahedrons" +
+                " and " +
+                mapped.Item2.ToString() + " (" + (mapped.Item2 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to triangles" +
+                ", " + (currentEvaluationPointsGenerator.Positions.Count - mapped.Item1 - mapped.Item2) + " unmapped");
         }
 
         // STEP 4. Generate reference
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Generating Reference", 0.0f);
             m_evaluator.validateDirections();
-            m_evaluator.GenerateReferenceEvaluationPoints(LightProbesBakedProbes, currentEvaluationPointsGenerator.Positions);
+            m_evaluator.GenerateReferenceEvaluationPoints(currentEvaluationPointsGenerator.Positions);
             LumiLogger.Logger.Log("Generate reference EP");
         }
 
@@ -430,7 +435,7 @@ public class LumibricksScript : MonoBehaviour
         int num_probes_before_decimation = currentLightProbesGenerator.Positions.Count;
         List<Vector3> result = new List<Vector3>();
         if (!isCancelled) {
-            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions, LightProbesBakedProbes);
+            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions);
         }
 
         // STEP 6. Finalize
