@@ -32,15 +32,18 @@ class Evaluator
     public int startingLightProbes = 0;
     public int decimatedLightProbes = 0;
     public int finalLightProbes = 0;
-    public float totalTime = 0.0f;
 
     MetricsManager metricsManager = null;
     SolversManager solversManager = null;
-
+    ReportTimer reportTimer = null;
+    public ReportTimer GetReportTimer {
+        get { return reportTimer; }
+    }
 
     #region Constructor Functions
     public Evaluator() {
         LumiLogger.Logger.Log("Evaluator Constructor");
+        reportTimer = new ReportTimer();
         metricsManager = new MetricsManager();
         solversManager = new SolversManager();
         tetrahedronGraph = new TetrahedronGraph();
@@ -49,10 +52,6 @@ class Evaluator
         Reset(4);
     }
     #endregion
-
-    public void ResetTime() {
-        totalTime = 0.0f;
-    }
 
     public void Reset(int probesCount) {
         directionSamplingGenerator.Reset();
@@ -65,6 +64,10 @@ class Evaluator
         ResetLightProbeData(probesCount);
         solversManager.Reset();
         metricsManager.Reset();
+    }
+
+    public void ResetTime() {
+        reportTimer.Reset();
     }
 
     public void SetProbeData(SphericalHarmonicsL2[] probeData) {
@@ -102,8 +105,7 @@ class Evaluator
 
         finalLightProbes = 0;
         evaluationError = 0.0f;
-    }
-    
+    }    
 
     public void populateGUI_DecimateSettings() {
         directionSamplingGenerator.populateGUI_EvaluateDirections();
@@ -157,7 +159,7 @@ class Evaluator
          +finalLightProbes.ToString()), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(totalTime.ToString("0.00s")), CustomStyles.defaultGUILayoutOption);
+        EditorGUILayout.LabelField(new GUIContent("Time: ", "The total time taken for Decimation"), new GUIContent(reportTimer.totalTime.ToString("0.00s")), CustomStyles.defaultGUILayoutOption);
         EditorGUILayout.LabelField(new GUIContent("EPs:", "The total number of evaluation points"), new GUIContent(currentEvaluationPointsGenerator.TotalNumProbes.ToString()), CustomStyles.defaultGUILayoutOption);
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
@@ -253,15 +255,7 @@ class Evaluator
             ", Minimum Error: " + (isTerminationEvaluationError ? termination_error.ToString() : "Disabled") +
             ", Minimum LP Set: " + (isTerminationCurrentLightProbes ? termination_probes.ToString() : "Disabled"));
 
-        long step1 = 0;
-        long step2 = 0;
-        long step3 = 0;
-        long step4 = 0;
-        long step5 = 0;
-        long step6 = 0;
-        tetr = 0;
         System.Diagnostics.Stopwatch stopwatch;
-        mapping = 0;
 
 #if FAST_IMPL
         List<Color> decimatedEvaluationResults = referenceEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
@@ -314,14 +308,14 @@ class Evaluator
                 // assign the new probe data to the graph
                 tetrahedronGraph.LightProbesBakedProbes = finalLightProbesDecimated;
                 stopwatch.Stop();
-                step1 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step1Time += stopwatch.ElapsedMilliseconds;
 
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 Tetrahedralize(finalPositionsDecimated);
                 MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints, ref mappingLPtoEPDecimated);
                 stopwatch.Stop();
-                step2 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step2Time += stopwatch.ElapsedMilliseconds;
 
                 // 3. Evaluate only the points that have changed
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -331,13 +325,13 @@ class Evaluator
                 }
                 List<Color> currentEvaluationResults = EvaluatePoints(evaluationPoints, prevEvaluationResults);
                 stopwatch.Stop();
-                step3 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step3Time += stopwatch.ElapsedMilliseconds;
 
                 // 4. Compute Cost of current configuration
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 double decimatedCost = solversManager.computeLoss(currentEvaluationResults, referenceEvaluationResults);
                 stopwatch.Stop();
-                step4 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step4Time += stopwatch.ElapsedMilliseconds;
 
                 // 5. Find light probe with the minimum error
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -354,14 +348,14 @@ class Evaluator
 #endif                        
                 }
                 stopwatch.Stop();
-                step5 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step5Time += stopwatch.ElapsedMilliseconds;
 
                 // add back the removed items O(n)
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 finalPositionsDecimated.Insert(random_index, last_position_removed);
                 finalLightProbesDecimated.Insert(random_index, last_SH_removed);
                 stopwatch.Stop();
-                step6 += stopwatch.ElapsedMilliseconds;
+                reportTimer.step6Time += stopwatch.ElapsedMilliseconds;
             }
 
             if (decimatedIndex == -1) {
@@ -403,28 +397,17 @@ class Evaluator
             evaluationError = currentEvaluationError;
         }
 
-        LumiLogger.Logger.Log("Finished after " + iteration.ToString() + " iterations. Final error: " + evaluationError.ToString("0.00") + "%");
-        LumiLogger.Logger.Log("1. Remove LP: " + step1 / 1000.0 + "s");
-        LumiLogger.Logger.Log("2. Remap EPs: " + step2 / 1000.0 + "s");
-        LumiLogger.Logger.Log("2.1 Tetrahed: " + tetr / 1000.0 + "s");
-        LumiLogger.Logger.Log("2.2 Mappings: " + mapping / 1000.0 + "s");
-        LumiLogger.Logger.Log("3. Eval  EPs: " + step3 / 1000.0 + "s");
-        LumiLogger.Logger.Log("4. Calc Cost: " + step4 / 1000.0 + "s");
-        LumiLogger.Logger.Log("5. Find Min : " + step5 / 1000.0 + "s");
-        LumiLogger.Logger.Log("6. Insert LP: " + step6 / 1000.0 + "s");
-        LumiLogger.Logger.Log("Total: " + (step1 + step2 + step3 + step4 + step5 + step6) / 1000.0 + "s");
+        reportTimer.Report(iteration, evaluationError);
 
         return finalPositionsDecimated;
     }
 
-    long tetr = 0;
-    long mapping = 0;
     public void Tetrahedralize(List<Vector3> probePositions) {
         System.Diagnostics.Stopwatch stopwatch;
         stopwatch = System.Diagnostics.Stopwatch.StartNew();
         tetrahedronGraph.Tetrahedralize(probePositions);
         stopwatch.Stop();
-        tetr += stopwatch.ElapsedMilliseconds;
+        reportTimer.tetrahedralizeTime += stopwatch.ElapsedMilliseconds;
     }
 
     public (int, int) MapEvaluationPointsToLightProbes(List<Vector3> probePositions, List<Vector3> evalPositions) {
@@ -517,7 +500,7 @@ class Evaluator
         }
 
         stopwatch.Stop();
-        mapping += stopwatch.ElapsedMilliseconds;
+        reportTimer.mappingTime += stopwatch.ElapsedMilliseconds;
         return (mapped, mapped_outside);
     }
 }

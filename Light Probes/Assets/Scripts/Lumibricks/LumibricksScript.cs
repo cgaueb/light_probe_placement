@@ -450,7 +450,7 @@ public class LumibricksScript : MonoBehaviour
         }
 
         stopwatch.Stop();
-        m_evaluator.totalTime = (float)(stopwatch.ElapsedMilliseconds / 1000.0);
+        m_evaluator.GetReportTimer.totalTime = (float)(stopwatch.ElapsedMilliseconds / 1000.0);
     }
 
     #endregion
