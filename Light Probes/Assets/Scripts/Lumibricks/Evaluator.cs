@@ -232,10 +232,6 @@ class Evaluator
         return clickedDecimateLightProbes;
     }
 
-    public double ComputeCurrentCost(List<Color> estimates, List<Color> reference) {
-        return solversManager.computeLoss(estimates, reference);
-    }
-
     public void GenerateReferenceEvaluationPoints(List<SphericalHarmonicsL2> bakedprobes, List<Vector3> evalPositions) {
         evaluationResults = EvaluatePoints(bakedprobes, evalPositions, null);
     }
@@ -433,7 +429,7 @@ class Evaluator
 
                 // 4. Compute Cost of current configuration
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                double decimatedCost = ComputeCurrentCost(currentEvaluationResults, evaluationResults);
+                double decimatedCost = solversManager.computeLoss(currentEvaluationResults, evaluationResults);
                 stopwatch.Stop();
                 step4 += stopwatch.ElapsedMilliseconds;
 
