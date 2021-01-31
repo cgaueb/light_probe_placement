@@ -5,59 +5,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
 
-
 class Evaluator
 {
-    public enum LightProbesEvaluationType
-    {
-        FixedLow,
-        FixedMedium,
-        FixedHigh,
-        Random
-    }
-
-    List<Vector3> evaluationFixedDirections = new List<Vector3> { 
-        // LOW  (6)
-        new Vector3( 1.0f, 0.0f, 0.0f),
-        new Vector3(-1.0f, 0.0f, 0.0f),
-        new Vector3( 0.0f, 1.0f, 0.0f),
-        new Vector3( 0.0f,-1.0f, 0.0f),
-        new Vector3( 0.0f, 0.0f, 1.0f),
-        new Vector3( 0.0f, 0.0f,-1.0f),
-
-        // MEDIUM (8)
-        new Vector3( 1.0f, 1.0f, 1.0f),
-        new Vector3( 1.0f, 1.0f,-1.0f),
-        new Vector3(-1.0f, 1.0f, 1.0f),
-        new Vector3(-1.0f, 1.0f,-1.0f),
-        new Vector3( 1.0f,-1.0f, 1.0f),
-        new Vector3( 1.0f,-1.0f,-1.0f),
-        new Vector3(-1.0f,-1.0f, 1.0f),
-        new Vector3(-1.0f,-1.0f,-1.0f),
-
-        // HIGH (12)
-        new Vector3( 0.0f, 1.0f, 1.0f),
-        new Vector3( 0.0f, 1.0f,-1.0f),
-        new Vector3( 0.0f,-1.0f, 1.0f),
-        new Vector3( 0.0f,-1.0f,-1.0f),
-        new Vector3( 1.0f, 0.0f, 1.0f),
-        new Vector3( 1.0f, 0.0f,-1.0f),
-        new Vector3( 1.0f, 1.0f, 0.0f),
-        new Vector3( 1.0f,-1.0f, 0.0f),
-        new Vector3(-1.0f, 0.0f, 1.0f),
-        new Vector3(-1.0f, 0.0f,-1.0f),
-        new Vector3(-1.0f, 1.0f, 0.0f),
-        new Vector3(-1.0f,-1.0f, 0.0f)
-    };
-
-    // sampling
-    public readonly int[] evaluationFixedCount = new int[] { 6, 14, 26 };
-    public int evaluationRandomSamplingCount;
-    public List<Vector3> evaluationRandomDirections = new List<Vector3>();
-    bool averageDirections = false;
-    bool is_stochastic = false;
-    public int num_stochastic_samples;
-
     // tetrahedral
     class TetrahedronGraph
     {
@@ -183,6 +132,14 @@ class Evaluator
     public List<List<int>> mappingLPtoEP;
     public List<List<int>> mappingLPtoEPDecimated;
 
+    // sampling
+    bool is_stochastic = false;
+    public int num_stochastic_samples;
+
+    // direction generator
+    bool averageDirections = false;
+    DirectionSamplingGenerator directionSamplingGenerator = null;
+
     // evaluation
     public List<Color> referenceEvaluationResults;
     public double evaluationError = 0.0f;
@@ -200,23 +157,15 @@ class Evaluator
     MetricsManager metricsManager = null;
     SolversManager solversManager = null;
 
-    public LightProbesEvaluationType EvaluationType { get; set; }
 
     #region Constructor Functions
     public Evaluator() {
         LumiLogger.Logger.Log("Evaluator Constructor");
-        evaluationRandomSamplingCount = 50;
-        EvaluationType = LightProbesEvaluationType.FixedHigh;
         metricsManager = new MetricsManager();
         solversManager = new SolversManager();
         tetrahedronGraph = new TetrahedronGraph();
+        directionSamplingGenerator = new DirectionSamplingGenerator();
         solversManager.MetricsManager = metricsManager;
-        EvaluationType = LightProbesEvaluationType.FixedHigh;
-        for (int i = 0; i < evaluationFixedDirections.Count; ++i) {
-            Vector3 v1 = evaluationFixedDirections[i];
-            v1.Normalize();
-            evaluationFixedDirections[i] = v1;
-        }
         Reset(4);
     }
     #endregion
@@ -226,8 +175,7 @@ class Evaluator
     }
 
     public void Reset(int probesCount) {
-        EvaluationType = LightProbesEvaluationType.FixedHigh;
-        evaluationRandomSamplingCount = 32;
+        directionSamplingGenerator.Reset();
         isTerminationCurrentLightProbes = true;
         isTerminationEvaluationError = false;
         terminationEvaluationError = 0.1f;
@@ -263,7 +211,7 @@ class Evaluator
         referenceEvaluationResults = new List<Color>();
         tetrahedronGraph.ResetEvaluationData();
 
-        evaluationRandomDirections = new List<Vector3>();
+        directionSamplingGenerator.ResetEvaluationData();
 
         mappingLPtoEP = new List<List<int>>();
         mappingLPtoEPDecimated = new List<List<int>>();
@@ -271,28 +219,13 @@ class Evaluator
         finalLightProbes = 0;
         evaluationError = 0.0f;
     }
-    public void validateDirections() {
-        if (EvaluationType == LightProbesEvaluationType.Random) {
-            if (evaluationRandomDirections.Count != evaluationRandomSamplingCount) {
-                MathUtilities.GenerateUniformSphereSampling(out evaluationRandomDirections, evaluationRandomSamplingCount);
-                LumiLogger.Logger.Log("Generated " + evaluationRandomSamplingCount.ToString() + " random evaluation directions");
-            }
-        }
-    }
-    private void populateGUI_EvaluateDirections() {
-        EvaluationType = (LightProbesEvaluationType)EditorGUILayout.EnumPopup(new GUIContent("Type:", "The probe evaluation method"), EvaluationType, CustomStyles.defaultGUILayoutOption);
-        if (EvaluationType == LightProbesEvaluationType.Random) {
-            evaluationRandomSamplingCount = EditorGUILayout.IntField(new GUIContent("Number of Directions:", "The total number of uniform random sampled directions"), evaluationRandomSamplingCount, CustomStyles.defaultGUILayoutOption);
-            evaluationRandomSamplingCount = Mathf.Clamp(evaluationRandomSamplingCount, 1, 1000000);
-        } else {
-            EditorGUILayout.LabelField(new GUIContent("Number of Directions:", "The total number of evaluation directions"), new GUIContent(evaluationFixedCount[(int)EvaluationType].ToString()), CustomStyles.defaultGUILayoutOption);
-        }
-        averageDirections = EditorGUILayout.Toggle(
-            new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, CustomStyles.defaultGUILayoutOption);
-    }
+    
 
     public void populateGUI_DecimateSettings() {
-        populateGUI_EvaluateDirections();
+        directionSamplingGenerator.populateGUI_EvaluateDirections();
+        averageDirections = EditorGUILayout.Toggle(
+            new GUIContent("Average Directions", "Evaluate each EP against the average result of generated directions, instead of each one separately"), averageDirections, CustomStyles.defaultGUILayoutOption);
+
         GUILayout.BeginHorizontal();
         is_stochastic = EditorGUILayout.Toggle(
                new GUIContent("Stochastic Decimation", "Decimate against a random subset in each iteration instead all LPs"), is_stochastic);
@@ -349,17 +282,10 @@ class Evaluator
     }
 
     public void GenerateReferenceEvaluationPoints(List<Vector3> evalPositions) {
+        directionSamplingGenerator.GenerateDirections();
         referenceEvaluationResults = EvaluatePoints(evalPositions, null);
     }
 
-    public void GetEvaluationDirections(LightProbesEvaluationType evaluationType, out Vector3[] directions) {
-        if (evaluationType == LightProbesEvaluationType.Random) {
-            directions = evaluationRandomDirections.ToArray();
-        } else {
-            int numDirections = evaluationFixedCount[(int)EvaluationType];
-            directions = evaluationFixedDirections.GetRange(0, numDirections).ToArray();
-        }
-    }
     void GetInterpolatedLightProbe(int evalPositionIndex, ref SphericalHarmonicsL2 sh2) {
         // Get Tetrahedron Weights
         Vector4 weights = tetrahedronGraph.GetEvaluationTetrahedronWeights(evalPositionIndex);
@@ -392,8 +318,7 @@ class Evaluator
     }
 
     public List<Color> EvaluatePoints(List<Vector3> evalPositions, List<Color> oldEvaluationResults) {
-        Vector3[] directions;
-        GetEvaluationDirections(EvaluationType, out directions);
+        Vector3[] directions = directionSamplingGenerator.GetEvaluationDirections();
         int resultsPerDirection = averageDirections ? 1 : directions.Length;
 
         List<Color> currentEvaluationResults = new List<Color>(evalPositions.Count * resultsPerDirection);
@@ -436,7 +361,7 @@ class Evaluator
         LumiLogger.Logger.Log("Starting Decimation. Settings: " +
             "LPs: " + script.currentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.currentEvaluationPointsGenerator.TotalNumProbes +
-            ", LP Evaluation method: " + EvaluationType.ToString() + "(" + (EvaluationType == LightProbesEvaluationType.Random ? evaluationRandomSamplingCount : evaluationFixedCount[(int)EvaluationType]) + ")" +
+            ", LP Evaluation method: " + directionSamplingGenerator.EvaluationType.ToString() + "(" + directionSamplingGenerator.GetDirectionCount() + ")" +
             ", Averaging EP directions: " + averageDirections.ToString() +
             ", Stochastic: " + (is_stochastic ? num_stochastic_samples.ToString() : "Disabled") +
             ", Solver: " + solversManager.CurrentSolverType.ToString() +

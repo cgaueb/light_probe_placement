@@ -426,7 +426,6 @@ public class LumibricksScript : MonoBehaviour
         // STEP 4. Generate reference
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Generating Reference", 0.0f);
-            m_evaluator.validateDirections();
             m_evaluator.GenerateReferenceEvaluationPoints(currentEvaluationPointsGenerator.Positions);
             LumiLogger.Logger.Log("Generate reference EP");
         }
