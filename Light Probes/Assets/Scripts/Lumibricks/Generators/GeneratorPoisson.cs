@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
+// based on Bart Wronski's Python implementation: https://github.com/bartwronski/PoissonSamplingGenerator
 public class GeneratorPoisson : GeneratorInterface
 {
     #region Private Variables
