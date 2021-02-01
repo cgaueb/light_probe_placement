@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 class MathUtilities
 {
+    private static float epsilon = 0.000001f;
+
     public static Vector3 GetCentroid(List<Vector3> positions) {
         Vector3 centroid = new Vector3();
         for (int lpIndex = 0; lpIndex < positions.Count; lpIndex++)
@@ -112,13 +114,11 @@ class MathUtilities
         float w3 = vc6 * v6;
         float w4 = 1 - w1 - w2 - w3;
 
-
         return new Vector4(w1, w2, w3, w4);
     }
 
     public static bool IsInsideTetrahedronWeights(Vector3[] v, Vector3 p, out Vector4 weights) {
         weights = GetTetrahedronWeights(v, p);
-        return weights.x >= 0 && weights.y >= 0 && weights.z >= 0 && weights.w >= 0
-            && (weights.x + weights.y + weights.z + weights.w <= 1.0);
+        return weights.x >= -epsilon && weights.y >= -epsilon && weights.z >= -epsilon && weights.w >= -epsilon;
     }
 }
