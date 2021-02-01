@@ -360,17 +360,6 @@ public class LumibricksScript : MonoBehaviour
     }
     private void DestroyEvaluationPoints(GeneratorInterface generator) {
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
-        if (evaluationObjectParent == null) {
-            //LumiLogger.Logger.LogWarning("Could not find object: " + "EvaluationGroup_" + generator.GeneratorName);
-            return;
-        }
-        Transform[] evaluationObjectsTransforms = evaluationObjectParent.GetComponentsInChildren<Transform>();
-        if (evaluationObjectsTransforms.Length == 0) {
-            return;
-        }
-        foreach (Transform child in transform) {
-            DestroyImmediate(child.gameObject);
-        }
         DestroyImmediate(evaluationObjectParent);
     }
 
@@ -384,9 +373,41 @@ public class LumibricksScript : MonoBehaviour
             collider.enabled = false;
         }
     }
+    private List<Vector3> GetEPList(GeneratorInterface generator) {
+        List<Vector3> EPList = new List<Vector3>();
+        GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
+        Transform[] evaluationObjectsTransforms = evaluationObjectParent.GetComponentsInChildren<Transform>();
+        foreach (Transform child in evaluationObjectsTransforms) {
+            if (child.parent == null) {
+                continue;
+            }
+            EPList.Add(child.position);
+        }
+        return EPList;
+    }
 
     public void DecimateLightProbes(bool reset) {
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Fetch updated EPs and LPs
+        List<Vector3> probeList = LightProbeGroup.probePositions.ToList();
+        int numProbes = probeList.Count;
+        List<Vector3> EPList = GetEPList(currentEvaluationPointsGenerator);
+
+        // update generator data
+        currentLightProbesGenerator.Positions = probeList;
+        currentLightProbesGenerator.TotalNumProbes = probeList.Count;
+        currentEvaluationPointsGenerator.Positions = EPList;
+        currentEvaluationPointsGenerator.TotalNumProbes = EPList.Count;
+
+        if (numProbes < 4) {
+            LumiLogger.Logger.LogWarning("Number of probes must be higher than 4");
+            return;
+        }
+        if (EPList.Count <= 0) {
+            LumiLogger.Logger.LogWarning("No evaluation points found");
+            return;
+        }
 
         bool isCancelled = false;
         // STEP 1. Bake
@@ -399,13 +420,11 @@ public class LumibricksScript : MonoBehaviour
         // set light probes
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Resetting Data", 0.0f);
-            currentLightProbesGenerator.TotalNumProbes = currentLightProbesGenerator.Positions.Count;
             // Set Positions to LightProbeGroup
-            LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
             int userSelectedLightProbes = m_evaluator.terminationCurrentLightProbes;
             int userSelectedStochasticSamples = m_evaluator.num_stochastic_samples;
             // reset to default state
-            m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
+            m_evaluator.ResetLightProbeData(numProbes);
             // set terminating LP condition according to user selection
             m_evaluator.SetLightProbeUserSelection(userSelectedLightProbes, userSelectedStochasticSamples);
 
@@ -416,11 +435,11 @@ public class LumibricksScript : MonoBehaviour
         // STEP 3. Map EP to LP
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Mapping EP to LP", 0.0f);
-            m_evaluator.Tetrahedralize(currentLightProbesGenerator.Positions);
             LumiLogger.Logger.Log("Mapped " + currentLightProbesGenerator.Positions.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals");
             (int, int) mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
             LumiLogger.Logger.Log("Mapped " + currentEvaluationPointsGenerator.Positions.Count + " EPs: " +
                 mapped.Item1.ToString() + " (" + (mapped.Item1 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to tetrahedrons" +
+            m_evaluator.Tetrahedralize(probeList);
                 " and " +
                 mapped.Item2.ToString() + " (" + (mapped.Item2 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to triangles" +
                 ", " + (currentEvaluationPointsGenerator.Positions.Count - mapped.Item1 - mapped.Item2) + " unmapped");
@@ -429,15 +448,15 @@ public class LumibricksScript : MonoBehaviour
         // STEP 4. Generate reference
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Generating Reference", 0.0f);
-            m_evaluator.GenerateReferenceEvaluationPoints(currentEvaluationPointsGenerator.Positions);
+            m_evaluator.GenerateReferenceEvaluationPoints(EPList);
             LumiLogger.Logger.Log("Generate reference EP");
         }
 
         // STEP 5. Run decimation
-        int num_probes_before_decimation = currentLightProbesGenerator.Positions.Count;
+        int num_probes_before_decimation = numProbes;
         List<Vector3> result = new List<Vector3>();
         if (!isCancelled) {
-            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, currentEvaluationPointsGenerator.Positions, currentLightProbesGenerator.Positions);
+            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, EPList, probeList);
         }
 
         // STEP 6. Finalize
@@ -446,7 +465,7 @@ public class LumibricksScript : MonoBehaviour
             m_evaluator.finalLightProbes = currentLightProbesGenerator.Positions.Count;
             m_evaluator.decimatedLightProbes = num_probes_before_decimation - currentLightProbesGenerator.Positions.Count;
             // Set Positions to LightProbeGroup
-            LightProbeGroup.probePositions = currentLightProbesGenerator.Positions.ToArray();
+            LightProbeGroup.probePositions = result.ToArray();
             LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " + m_evaluator.finalLightProbes + " left");
         } else {
             LumiLogger.Logger.Log("Decimation cancelled");
