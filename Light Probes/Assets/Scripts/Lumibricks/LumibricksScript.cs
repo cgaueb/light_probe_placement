@@ -75,8 +75,6 @@ public class LumibricksScript : MonoBehaviour
             return true;
         }
         LumiLogger.Logger.Log("Init");
-        EPMaterial = new Material(Shader.Find("Unlit/Color"));
-        EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
 
         generatorListLightProbes = new Dictionary<PlacementType, GeneratorInterface>();
         generatorListLightProbes[PlacementType.Grid] = new GeneratorGrid();
@@ -106,6 +104,10 @@ public class LumibricksScript : MonoBehaviour
         generatorListEvaluationPoints[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
 
         return true;
+    }
+    public void createMaterial() {
+        EPMaterial = new Material(Shader.Find("Unlit/Color"));
+        EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
     }
 
     public void populateGUI_LightProbes() {
@@ -244,6 +246,7 @@ public class LumibricksScript : MonoBehaviour
         EvaluationPositionsPlaceType = PlacementType.Poisson;
 
         DestroyImmediate(EPMaterial);
+        createMaterial();
         ResetLightProbes(true);
         ResetEvaluationPoints(true);
     }
