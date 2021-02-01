@@ -442,20 +442,19 @@ class Evaluator
             // 1. Relate Evaluation Point with one Tetrahedron
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronGraph.getNumTetrahedrons(); tetrahedronIndex++) {
                 Vector4 tetrahedronWeights = Vector4.zero;
-                if (MathUtilities.IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex], out tetrahedronWeights)) {
-                    tetrahedronGraph.SetEvaluationTetrahedronIndex(evaluationPositionIndex, tetrahedronIndex);
-                    tetrahedronGraph.SetEvaluationTetrahedronWeights(evaluationPositionIndex, tetrahedronWeights);
-
-                    Vector4 indices = tetrahedronGraph.GetTetrahedronIndices(tetrahedronIndex);
-                    mappingList[(int)indices[0]].Add(evaluationPositionIndex);
-                    mappingList[(int)indices[1]].Add(evaluationPositionIndex);
-                    mappingList[(int)indices[2]].Add(evaluationPositionIndex);
-                    mappingList[(int)indices[3]].Add(evaluationPositionIndex);
-                    ++mapped;
-                    break;
+                if (!MathUtilities.IsInsideTetrahedronWeights(tetrahedronPositionsList[tetrahedronIndex], evalPositions[evaluationPositionIndex], out tetrahedronWeights)) {
+                    continue;
                 }
+                Vector4 indices = tetrahedronGraph.GetTetrahedronIndices(tetrahedronIndex);
+                tetrahedronGraph.SetEvaluationTetrahedronIndex(evaluationPositionIndex, tetrahedronIndex);
+                tetrahedronGraph.SetEvaluationTetrahedronWeights(evaluationPositionIndex, tetrahedronWeights);
+                mappingList[(int)indices[0]].Add(evaluationPositionIndex);
+                mappingList[(int)indices[1]].Add(evaluationPositionIndex);
+                mappingList[(int)indices[2]].Add(evaluationPositionIndex);
+                mappingList[(int)indices[3]].Add(evaluationPositionIndex);
+                ++mapped;
+                break;
             }
-
             // 2. Map invalid tetrahedron to triangles
             if (tetrahedronGraph.UnMappedEvaluationState(evaluationPositionIndex))
             {   
@@ -464,6 +463,7 @@ class Evaluator
 
                 Vector3 ray_origin    = evalPositions[evaluationPositionIndex];
                 Vector3 ray_direction = lightProbesCentroid - ray_origin;
+                ray_direction.Normalize();
                 Vector4 weights       = new Vector4();
 
                 for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronGraph.getNumTetrahedrons(); tetrahedronIndex++) { 
@@ -472,18 +472,19 @@ class Evaluator
                         Vector3 v1 = tetrahedronPositionsList[tetrahedronIndex][(j + 1)%4];
                         Vector3 v2 = tetrahedronPositionsList[tetrahedronIndex][(j + 2)%4];
 
-                        float t=0, u=0, v=0;
-                        if (MathUtilities.IntersectRay_Triangle(ray_origin, ray_direction, v0, v1, v2, ref t, ref u, ref v))
-                        {
-                            if (t > 0 && t < min_t){
-                                min_t     = t;
-                                min_index = tetrahedronIndex;
-                                // Set Weights
-                                weights[(j + 0)%4] = u;
-                                weights[(j + 1)%4] = v;
-                                weights[(j + 2)%4] = 1-u-v;
-                                weights[(j + 3)%4] = 0;
-                            }
+                        float t = 0;
+                        Vector3 tri_weights;
+                        if (!MathUtilities.IntersectRay_Triangle(ray_origin, ray_direction, v0, v1, v2, out t, out tri_weights)) {
+                            continue;
+                        }
+                        if (t > 0 && t < min_t) {
+                            min_t = t;
+                            min_index = tetrahedronIndex;
+                            // Set Weights
+                            weights[(j + 0) % 4] = tri_weights.x;
+                            weights[(j + 1) % 4] = tri_weights.y;
+                            weights[(j + 2) % 4] = tri_weights.z;
+                            weights[(j + 3) % 4] = 0;
                         }
                     }
                 }

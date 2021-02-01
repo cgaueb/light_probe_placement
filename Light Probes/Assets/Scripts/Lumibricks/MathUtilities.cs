@@ -13,44 +13,37 @@ class MathUtilities
         return centroid;
     }
 
+    // based on Morgan McGuire's sample: https://graphicscodex.com/Sample2-RayTriangleIntersection.pdf
     public static bool IntersectRay_Triangle(Vector3 ray_origin, Vector3 ray_direction,
                                         Vector3 v0, Vector3 v1, Vector3 v2,
-                                        ref float t, ref float u, ref float v) {
+                                        out float t,
+                                        out Vector3 barycentric) {
         // find vectors for two edges sharing v0
         Vector3 edge1 = v1 - v0;
         Vector3 edge2 = v2 - v0;
 
-        // begin calculating determinant - also used to calculate U parameter
-        Vector3 pvec = Vector3.Cross(ray_direction, edge2);
+        Vector3 q = Vector3.Cross(ray_direction, edge2);
+        float a = Vector3.Dot(edge1, q);
 
-        // if determinant is near zero, ray lies in plane of triangle
-        float det = Vector3.Dot(edge1, pvec);
+        t = 0;
+        barycentric = Vector3.zero;
 
-        // use backface culling
-        // if (det < RT_EPSILON)
-        //   return false;
-
-        float inv_det = 1.0f / det;
-        // calculate distance from v0 to ray origin
-        Vector3 tvec = ray_origin - v0;
-
-        // calculate U parameter and test bounds
-        u = Vector3.Dot(tvec, pvec) * inv_det;
-        if (u < 0.0 || u > 1.0f)
+        // nearly parallel
+        if (Mathf.Abs(a) < epsilon) {
             return false;
+        }
 
-        // prepare to test V parameter
-        Vector3 qvec = Vector3.Cross(tvec, edge1);
+        Vector3 s = (ray_origin - v0) / a;
+        Vector3 r = Vector3.Cross(s, edge1);
+        barycentric.x = Vector3.Dot(s, q);
+        barycentric.y = Vector3.Dot(r, ray_direction);
+        barycentric.z = 1.0f - barycentric.x - barycentric.y;
 
-        // calculate V parameter and test bounds
-        v = Vector3.Dot(ray_direction, qvec) * inv_det;
-        if (v < 0.0 || u + v > 1.0f)
-            return false;
-
-        // calculate t, ray intersects triangle
-        t = Vector3.Dot(edge2, qvec) * inv_det;
-
-        return true;
+        if (barycentric.x > -epsilon && barycentric.y > -epsilon && barycentric.z > -epsilon) {
+            t = Vector3.Dot(edge2, r);
+            return t >= -epsilon;
+        }
+        return false;
     }
 
     public static void GenerateUniformSphereSampling(out List<Vector3> directions, int numDirections) {
