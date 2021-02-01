@@ -435,14 +435,14 @@ public class LumibricksScript : MonoBehaviour
         // STEP 3. Map EP to LP
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Mapping EP to LP", 0.0f);
-            LumiLogger.Logger.Log("Mapped " + currentLightProbesGenerator.Positions.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals");
-            (int, int) mapped = m_evaluator.MapEvaluationPointsToLightProbes(currentLightProbesGenerator.Positions, currentEvaluationPointsGenerator.Positions);
-            LumiLogger.Logger.Log("Mapped " + currentEvaluationPointsGenerator.Positions.Count + " EPs: " +
-                mapped.Item1.ToString() + " (" + (mapped.Item1 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to tetrahedrons" +
             m_evaluator.Tetrahedralize(probeList);
+            LumiLogger.Logger.Log("Mapped " + probeList.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals");
+            (int, int) mapped = m_evaluator.MapEvaluationPointsToLightProbes(probeList, EPList);
+            LumiLogger.Logger.Log("Mapped " + EPList.Count + " EPs: " +
+                mapped.Item1.ToString() + " (" + (mapped.Item1 / (float)(EPList.Count)).ToString("0.00%") + ") to tetrahedrons" +
                 " and " +
-                mapped.Item2.ToString() + " (" + (mapped.Item2 / (float)(currentEvaluationPointsGenerator.Positions.Count)).ToString("0.00%") + ") to triangles" +
-                ", " + (currentEvaluationPointsGenerator.Positions.Count - mapped.Item1 - mapped.Item2) + " unmapped");
+                mapped.Item2.ToString() + " (" + (mapped.Item2 / (float)(EPList.Count)).ToString("0.00%") + ") to triangles" +
+                ", " + (EPList.Count - mapped.Item1 - mapped.Item2) + " unmapped");
         }
 
         // STEP 4. Generate reference
