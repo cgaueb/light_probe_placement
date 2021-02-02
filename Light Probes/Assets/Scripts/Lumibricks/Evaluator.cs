@@ -337,7 +337,7 @@ class Evaluator
 
                 // 5. Find light probe with the minimum error
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                if (decimatedCost < decimatedCostMin) {
+                if (decimatedCost > 0 && decimatedCost < decimatedCostMin) {
                     decimatedIndex = i;
                     decimatedCostMin = decimatedCost;
 
