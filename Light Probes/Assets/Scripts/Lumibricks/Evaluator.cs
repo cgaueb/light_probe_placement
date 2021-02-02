@@ -189,7 +189,7 @@ class Evaluator
         GetInterpolatedLightProbe(evalPositionIndex, ref sh2);
         Color[] evaluationResultsPerDir = new Color[directions.Length];
         sh2.Evaluate(directions, evaluationResultsPerDir);
-        if (resultsPerDirection > 1) {
+        if (resultsPerDirection == 1) {
             Color uniformSampledEvaluation = new Color(0, 0, 0);
             for (int i = 0; i < directions.Length; i++) {
                 uniformSampledEvaluation.r += evaluationResultsPerDir[i].r;
