@@ -314,7 +314,8 @@ class Evaluator
                 // 2. Map Evaluation Points to New Light Probe Set 
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 Tetrahedralize(finalPositionsDecimated);
-                MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints, ref mappingLPtoEPDecimated);
+                (int, int) mapresult = MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints, ref mappingLPtoEPDecimated);
+                Debug.Assert(evaluationPoints.Count - mapresult.Item1 - mapresult.Item2 == 0);
                 stopwatch.Stop();
                 reportTimer.step2Time += stopwatch.ElapsedMilliseconds;
 
