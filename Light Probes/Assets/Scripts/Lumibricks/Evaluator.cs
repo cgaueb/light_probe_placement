@@ -197,6 +197,7 @@ class Evaluator
                 uniformSampledEvaluation.b += evaluationResultsPerDir[i].b;
             }
             uniformSampledEvaluation /= directions.Length;
+            uniformSampledEvaluation.a = 1.0f;
             currentEvaluationResults.Add(uniformSampledEvaluation);
         } else {
             currentEvaluationResults.AddRange(evaluationResultsPerDir);
