@@ -228,12 +228,18 @@ class Evaluator
     }
 
     public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, ref bool isCancelled, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions) {
-        // TODO: add iterate [DONE]
-        // TODO: optimize [NOT], e.g. stochastic [DONE]
-        // TODO: modify cost function [DONE]
-        // TODO: verify result [DONE]
-        // TODO: potentially add multiple cost functions and error metrics [DONE]
-        // TODO: finalize plugin/UI software engineering [ALMOST DONE]
+        // TODO: Add iterate [DONE]
+        // TODO: Optimize [NOT], e.g. stochastic [DONE]
+        // TODO: Modify cost function [DONE]
+        // TODO: Verify result [DONE]
+        // TODO: Potentially add multiple cost functions and error metrics [DONE]
+        // TODO: Finalize plugin/UI software engineering [ALMOST DONE]
+
+        // Optimizations TODO: Don't iterate against every EP/LP every time
+        // Step 1: Ideally use a stochastic and approximate approach, i.e. remove random N at each iteration. [Partially done - Needs to check most important ones]
+        // Step 2: Only perform mapping in the vicinity of the removed light probe. [NOT]
+        // Step 3: Only evaluate points in the vicinity of the probe. [DONE - Disabled as it needs larger neighbourhood checks]
+        // Step 4: Add a further optimization step to move LPs to "better" locations
 
         solversManager.SetCurrentSolver();
         metricsManager.SetCurrentMetric();
@@ -272,10 +278,6 @@ class Evaluator
 
         while (currentEvaluationError < termination_error && termination_probes < finalPositionsDecimated.Count && finalPositionsDecimated.Count > 4 && !isCancelled) {
             // remove the Probe which contributes "the least" to the reference
-            // Optimize: don't iterate against all every time
-            // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
-            // Step 2: Only perform mapping in the vicinity of the removed light probe. [NOT]
-            // Step 3: Only evaluate points in the vicinity of the probe. [DONE]
 
             float progress = 0.0f; 
             if (isTerminationCurrentLightProbes) {
