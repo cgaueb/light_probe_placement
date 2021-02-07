@@ -53,9 +53,9 @@ class Evaluator
 
     public void Reset(int probesCount) {
         directionSamplingGenerator.Reset();
-        isTerminationCurrentLightProbes = true;
-        isTerminationEvaluationError = false;
-        terminationEvaluationError = 0.1f;
+        isTerminationCurrentLightProbes = false;
+        isTerminationEvaluationError = true;
+        terminationEvaluationError = 5.0f;
         is_stochastic = false;
         num_stochastic_samples = 20;
         averageDirections = true;
