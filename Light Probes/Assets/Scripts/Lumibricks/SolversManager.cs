@@ -19,16 +19,52 @@ class SolversManager
         public virtual double computeLoss(List<Color> estimates, List<Color> reference) {
             double cost = 0.0;
             for (int j = 0; j < estimates.Count; j++) {
-                cost += computeSampleLoss(estimates[j], reference[j]);
+                double sample_cost = computeSampleLoss(estimates[j], reference[j]);
+                cost += sample_cost;
             }
             cost /= estimates.Count;
+            cost *= 100; 
             return cost;
         } 
         public abstract double computeSampleLoss(Color estimate, Color reference);
     }
     
 
-    class MaxPercentageErrorSolver : Solver
+    abstract class PercentageErrorSolver : Solver
+    {
+        public override double computeSampleLoss(Color estimate, Color reference) {
+            Vector3[] sample_evaluation = metricsManager.evaluateSample(estimate, reference);
+            // return the average absolute relative difference, but also account for zero values
+            // abs(x-y) / (abs(x) + abs(y))
+            // could also use sqrt here to give higher feedback to larger differences
+            double cost = 0.0;
+            double num_valid_weights = 0.0;
+            Vector3 sample_cost_triplet = Vector3.zero;
+            sample_cost_triplet.x = System.Math.Abs(sample_evaluation[0].x - sample_evaluation[1].x) / (System.Math.Abs(sample_evaluation[0].x) + System.Math.Abs(sample_evaluation[1].x));
+            if (!double.IsNaN(sample_cost_triplet.x)) {
+                cost = sample_cost_triplet.x;
+                num_valid_weights++;
+            }
+            if (metricsManager.CurrentMetricType != MetricsManager.MetricType.Luminance) {
+                sample_cost_triplet.y = System.Math.Abs(sample_evaluation[0].y - sample_evaluation[1].y) / (System.Math.Abs(sample_evaluation[0].y) + System.Math.Abs(sample_evaluation[1].y));
+                if (!double.IsNaN(sample_cost_triplet.y)) {
+                    cost += sample_cost_triplet.y;
+                    num_valid_weights++;
+                }
+                sample_cost_triplet.z = System.Math.Abs(sample_evaluation[0].z - sample_evaluation[1].z) / (System.Math.Abs(sample_evaluation[0].z) + System.Math.Abs(sample_evaluation[1].z));
+                if (!double.IsNaN(sample_cost_triplet.z)) {
+                    cost += sample_cost_triplet.z;
+                    num_valid_weights++;
+                }
+            }
+            if (num_valid_weights > 0) {
+                cost /= num_valid_weights;
+            }
+            return cost;
+        }
+    }
+
+    class MaxPercentageErrorSolver : PercentageErrorSolver
     {
         public override double computeLoss(List<Color> estimates, List<Color> reference) {
             double cost = 0.0;
@@ -37,58 +73,23 @@ class SolversManager
                 cost = System.Math.Max(cost, sample_cost);
             }
             cost *= 100;
-            //cost /= estimates.Count;
-            return cost;
-        }
-
-        public override double computeSampleLoss(Color estimate, Color reference) {
-            Vector3[] sample_evaluation = metricsManager.evaluateSample(estimate, reference);
-            // return the max absolute relative difference, but also account for zero values
-            // abs(x-y) / 0.5 (x+y)
-            // could also use sqrt here to give higher feedback to larger differences
-            Vector3 sample_cost_triplet = new Vector3(
-                System.Math.Abs(sample_evaluation[0].x - sample_evaluation[1].x) / (System.Math.Abs(sample_evaluation[0].x) + System.Math.Abs(sample_evaluation[1].x)),
-                System.Math.Abs(sample_evaluation[0].y - sample_evaluation[1].y) / (System.Math.Abs(sample_evaluation[0].y) + System.Math.Abs(sample_evaluation[1].y)),
-                System.Math.Abs(sample_evaluation[0].z - sample_evaluation[1].z) / (System.Math.Abs(sample_evaluation[0].z) + System.Math.Abs(sample_evaluation[1].z)));
-            double cost = System.Math.Max(System.Math.Max(sample_cost_triplet.x, sample_cost_triplet.y), sample_cost_triplet.z);
-            if (double.IsNaN(cost)) {
-                cost = 0.0;
-            }
             return cost;
         }
     }
 
-    class AveragePercentageErrorSolver : Solver
+    class AveragePercentageErrorSolver : PercentageErrorSolver
     {
         public override double computeLoss(List<Color> estimates, List<Color> reference) {
             double cost = 0.0;
-            //double max_cost = 0.0;
             for (int j = 0; j < estimates.Count; j++) {
                 double sample_cost = computeSampleLoss(estimates[j], reference[j]);
                 cost += sample_cost;
-                //max_cost = System.Math.Max(max_cost, sample_cost);
-                //LumiLogger.Logger.Log(j + ".Cost: " + sample_cost + ", max: " + max_cost);
             }
-            cost *= 100;
             cost /= estimates.Count;
-            //max_cost *= 100;
-            //LumiLogger.Logger.Log("Final Cost: " + cost + ", max: " + max_cost);
-            return cost;
-        }
-
-        public override double computeSampleLoss(Color estimate, Color reference) {
-            Vector3[] sample_evaluation = metricsManager.evaluateSample(estimate, reference);
-            // return the average absolute relative difference, but also account for zero values
-            // abs(x-y) / (abs(x) + abs(y))
-            // could also use sqrt here to give higher feedback to larger differences
-            Vector3 sample_cost_triplet = new Vector3(
-                System.Math.Abs(sample_evaluation[0].x - sample_evaluation[1].x) / (System.Math.Abs(sample_evaluation[0].x) + System.Math.Abs(sample_evaluation[1].x)),
-                System.Math.Abs(sample_evaluation[0].y - sample_evaluation[1].y) / (System.Math.Abs(sample_evaluation[0].y) + System.Math.Abs(sample_evaluation[1].y)),
-                System.Math.Abs(sample_evaluation[0].z - sample_evaluation[1].z) / (System.Math.Abs(sample_evaluation[0].z) + System.Math.Abs(sample_evaluation[1].z)));
-            double cost = System.Math.Max(System.Math.Max(sample_cost_triplet.x, sample_cost_triplet.y), sample_cost_triplet.z);
-            if (double.IsNaN(cost)) {
-                cost = 0.0;
+            if (metricsManager.CurrentMetricType != MetricsManager.MetricType.Luminance) {
+                cost /= 3.0;
             }
+            cost *= 100; 
             return cost;
         }
     }
