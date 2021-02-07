@@ -37,8 +37,8 @@ public class LumibricksScript : MonoBehaviour
     public GeneratorInterface currentEvaluationPointsGenerator = null;
     Dictionary<PlacementType, GeneratorInterface> generatorListLightProbes;
     Dictionary<PlacementType, GeneratorInterface> generatorListEvaluationPoints;
-    private List<Vector3> removedLPListPositions;
-    private List<SphericalHarmonicsL2> removedLPListSH;
+    private List<Vector3> removedLPListPositions = new List<Vector3>();
+    private List<SphericalHarmonicsL2> removedLPListSH = new List<SphericalHarmonicsL2>();
     #endregion
 
     #region Public Variables
