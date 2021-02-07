@@ -6,10 +6,8 @@ class SolversManager
 {
     public enum SolverType
     {
-        MaxPercentileError,
-        L1Norm,
-        L2Norm,
-        L2NormSquared
+        MaxPercentageError,
+        AveragePercentageError
     }
 
     private MetricsManager metricsManager = null;
@@ -23,38 +21,70 @@ class SolversManager
             for (int j = 0; j < estimates.Count; j++) {
                 cost += computeSampleLoss(estimates[j], reference[j]);
             }
-            //cost /= (estimates.Count);
+            cost /= estimates.Count;
             return cost;
         } 
         public abstract double computeSampleLoss(Color estimate, Color reference);
     }
     
 
-    class MaxPercentileErrorSolver : Solver
+    class MaxPercentageErrorSolver : Solver
     {
         public override double computeLoss(List<Color> estimates, List<Color> reference) {
             double cost = 0.0;
-            //List<Color> diffs = new List<Color>(estimates.Count);
             for (int j = 0; j < estimates.Count; j++) {
-               // diffs.Add(estimates[j] - reference[j]);
                 double sample_cost = computeSampleLoss(estimates[j], reference[j]);
                 cost = System.Math.Max(cost, sample_cost);
             }
-            cost *= 2 * 100;
-            cost /= estimates.Count;
+            cost *= 100;
+            //cost /= estimates.Count;
             return cost;
         }
 
         public override double computeSampleLoss(Color estimate, Color reference) {
-            Vector3 sample_cost = metricsManager.computeSampleLoss(estimate, reference);
             Vector3[] sample_evaluation = metricsManager.evaluateSample(estimate, reference);
             // return the max absolute relative difference, but also account for zero values
             // abs(x-y) / 0.5 (x+y)
             // could also use sqrt here to give higher feedback to larger differences
             Vector3 sample_cost_triplet = new Vector3(
-                System.Math.Abs(sample_cost.x) / System.Math.Abs(sample_evaluation[0].x + sample_evaluation[1].x),
-                System.Math.Abs(sample_cost.y) / System.Math.Abs(sample_evaluation[0].y + sample_evaluation[1].y),
-                System.Math.Abs(sample_cost.z) / System.Math.Abs(sample_evaluation[0].z + sample_evaluation[1].z));
+                System.Math.Abs(sample_evaluation[0].x - sample_evaluation[1].x) / (System.Math.Abs(sample_evaluation[0].x) + System.Math.Abs(sample_evaluation[1].x)),
+                System.Math.Abs(sample_evaluation[0].y - sample_evaluation[1].y) / (System.Math.Abs(sample_evaluation[0].y) + System.Math.Abs(sample_evaluation[1].y)),
+                System.Math.Abs(sample_evaluation[0].z - sample_evaluation[1].z) / (System.Math.Abs(sample_evaluation[0].z) + System.Math.Abs(sample_evaluation[1].z)));
+            double cost = System.Math.Max(System.Math.Max(sample_cost_triplet.x, sample_cost_triplet.y), sample_cost_triplet.z);
+            if (double.IsNaN(cost)) {
+                cost = 0.0;
+            }
+            return cost;
+        }
+    }
+
+    class AveragePercentageErrorSolver : Solver
+    {
+        public override double computeLoss(List<Color> estimates, List<Color> reference) {
+            double cost = 0.0;
+            //double max_cost = 0.0;
+            for (int j = 0; j < estimates.Count; j++) {
+                double sample_cost = computeSampleLoss(estimates[j], reference[j]);
+                cost += sample_cost;
+                //max_cost = System.Math.Max(max_cost, sample_cost);
+                //LumiLogger.Logger.Log(j + ".Cost: " + sample_cost + ", max: " + max_cost);
+            }
+            cost *= 100;
+            cost /= estimates.Count;
+            //max_cost *= 100;
+            //LumiLogger.Logger.Log("Final Cost: " + cost + ", max: " + max_cost);
+            return cost;
+        }
+
+        public override double computeSampleLoss(Color estimate, Color reference) {
+            Vector3[] sample_evaluation = metricsManager.evaluateSample(estimate, reference);
+            // return the average absolute relative difference, but also account for zero values
+            // abs(x-y) / (abs(x) + abs(y))
+            // could also use sqrt here to give higher feedback to larger differences
+            Vector3 sample_cost_triplet = new Vector3(
+                System.Math.Abs(sample_evaluation[0].x - sample_evaluation[1].x) / (System.Math.Abs(sample_evaluation[0].x) + System.Math.Abs(sample_evaluation[1].x)),
+                System.Math.Abs(sample_evaluation[0].y - sample_evaluation[1].y) / (System.Math.Abs(sample_evaluation[0].y) + System.Math.Abs(sample_evaluation[1].y)),
+                System.Math.Abs(sample_evaluation[0].z - sample_evaluation[1].z) / (System.Math.Abs(sample_evaluation[0].z) + System.Math.Abs(sample_evaluation[1].z)));
             double cost = System.Math.Max(System.Math.Max(sample_cost_triplet.x, sample_cost_triplet.y), sample_cost_triplet.z);
             if (double.IsNaN(cost)) {
                 cost = 0.0;
@@ -88,10 +118,8 @@ class SolversManager
 
     private Solver currentSolver;
     private Dictionary<SolverType, Solver> SolverList = new Dictionary<SolverType, Solver> {
-        { SolverType.MaxPercentileError, new MaxPercentileErrorSolver() },
-        { SolverType.L1Norm, new L1NormSolver() },
-        { SolverType.L2Norm, new L2NormSolver() },
-        { SolverType.L2NormSquared, new L2NormSquaredSolver() }
+        { SolverType.MaxPercentageError, new MaxPercentageErrorSolver() },
+        { SolverType.AveragePercentageError, new AveragePercentageErrorSolver() }
     };
 
     public SolverType CurrentSolverType { get; private set; }
@@ -112,7 +140,7 @@ class SolversManager
         }
     }
     public void Reset() {
-        CurrentSolverType = SolverType.MaxPercentileError;
+        CurrentSolverType = SolverType.AveragePercentageError;
     }
     public void populateGUI() {
         CurrentSolverType = (SolverType)EditorGUILayout.EnumPopup(new GUIContent("Solver:", "The solver method"), CurrentSolverType, CustomStyles.defaultGUILayoutOption);
