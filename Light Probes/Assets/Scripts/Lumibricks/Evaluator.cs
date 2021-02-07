@@ -227,7 +227,8 @@ class Evaluator
         return currentEvaluationResults;
     }
 
-    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, ref bool isCancelled, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions) {
+    public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, ref bool isCancelled, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions, 
+        ref List<Vector3> removedList, ref List<SphericalHarmonicsL2> removedSHList) {
         // TODO: Add iterate [DONE]
         // TODO: Optimize [NOT], e.g. stochastic [DONE]
         // TODO: Modify cost function [DONE]
@@ -243,6 +244,8 @@ class Evaluator
 
         solversManager.SetCurrentSolver();
         metricsManager.SetCurrentMetric();
+        removedList.Clear();
+        removedSHList.Clear();
 
         // store the final result here
         List<Vector3> finalPositionsDecimated = new List<Vector3>(lightProbePositions);
@@ -373,6 +376,8 @@ class Evaluator
                 break;
             }
             // 6. Remove light probe with the minimum error
+            removedList.Add(finalPositionsDecimated[decimatedIndexMin]);
+            removedSHList.Add(finalLightProbesDecimated[decimatedIndexMin]);
             finalPositionsDecimated.RemoveAt(decimatedIndexMin);
             finalLightProbesDecimated.RemoveAt(decimatedIndexMin);
 

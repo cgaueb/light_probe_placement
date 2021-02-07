@@ -27,7 +27,9 @@ public class LumibricksScript : MonoBehaviour
     GameObject sceneVolumeEPprev;
     public GameObject sceneVolumeEP;
     Bounds sceneVolumeEPBounds;
+    bool isShowLPsEnabled = true;
     Material EPMaterial = null;
+    Material LPMaterial = null;
 
     Evaluator m_evaluator = null;
 
@@ -35,6 +37,8 @@ public class LumibricksScript : MonoBehaviour
     public GeneratorInterface currentEvaluationPointsGenerator = null;
     Dictionary<PlacementType, GeneratorInterface> generatorListLightProbes;
     Dictionary<PlacementType, GeneratorInterface> generatorListEvaluationPoints;
+    private List<Vector3> removedLPListPositions;
+    private List<SphericalHarmonicsL2> removedLPListSH;
     #endregion
 
     #region Public Variables
@@ -47,7 +51,6 @@ public class LumibricksScript : MonoBehaviour
     #region Constructor Functions
     public LumibricksScript() {
         LumiLogger.Logger.Log("LumiScript Constructor");
-        m_evaluator = new Evaluator();
     }
     #endregion
 
@@ -87,6 +90,10 @@ public class LumibricksScript : MonoBehaviour
         generatorListEvaluationPoints[PlacementType.Random] = new GeneratorRandom();
         generatorListEvaluationPoints[PlacementType.Stratified] = new GeneratorStratified();
         generatorListEvaluationPoints[PlacementType.Poisson] = new GeneratorPoisson();
+        currentLightProbesGenerator = generatorListLightProbes[LightProbesPlaceType];
+        currentEvaluationPointsGenerator = generatorListEvaluationPoints[EvaluationPositionsPlaceType];
+
+        Reset();
 
         if (nv == null) {
             LumiLogger.Logger.LogWarning("No nav mesh agent component. NavMesh placement types will not be loaded");
@@ -104,10 +111,6 @@ public class LumibricksScript : MonoBehaviour
         generatorListEvaluationPoints[PlacementType.NavMeshVolume] = new GeneratorNavMeshVolume(this, nv);
 
         return true;
-    }
-    public void createMaterial() {
-        EPMaterial = new Material(Shader.Find("Unlit/Color"));
-        EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
     }
 
     public void populateGUI_LightProbes() {
@@ -165,6 +168,12 @@ public class LumibricksScript : MonoBehaviour
         return m_evaluator.populateGUI_Decimate(this, currentEvaluationPointsGenerator);
     }
 
+    public bool populateGUI_ShowRemovedLP() {
+        bool isShowLPsEnabledOld = isShowLPsEnabled;
+        isShowLPsEnabled = EditorGUILayout.Toggle(
+            new GUIContent("Show Removed LPs (" + removedLPListPositions.Count + "): ", "Show removed LPs after decimation"), isShowLPsEnabled);
+        return isShowLPsEnabled != isShowLPsEnabledOld;
+    }
     public bool isBaking() {
         return Lightmapping.bakedGI && Lightmapping.isRunning;
     }
@@ -191,6 +200,7 @@ public class LumibricksScript : MonoBehaviour
 
         m_evaluator.ResetLightProbeData(currentLightProbesGenerator.TotalNumProbes);
         m_evaluator.ResetTime();
+        RemoveOldLightProbes();
     }
 
     public void ResetLightProbes(bool reset) {
@@ -211,6 +221,7 @@ public class LumibricksScript : MonoBehaviour
         GenerateEvaluationPoints(reset);
         m_evaluator.ResetEvaluationData();
         m_evaluator.ResetTime();
+        RemoveOldLightProbes();
     }
 
     public void ResetEvaluationPoints(bool reset) {
@@ -240,15 +251,30 @@ public class LumibricksScript : MonoBehaviour
     private void Reset() {
         LumiLogger.Logger.Log("Reset entered");
 
+        m_evaluator = new Evaluator();
+
         m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
 
         LightProbesPlaceType = PlacementType.Grid;
         EvaluationPositionsPlaceType = PlacementType.Poisson;
+        isShowLPsEnabled = true;
 
-        DestroyImmediate(EPMaterial);
-        createMaterial();
+        sceneVolumeLPprev = null;
+
+        sceneVolumeLP = null;
+
+        sceneVolumeLPBounds = new Bounds();
+        sceneVolumeEPprev = null;
+        sceneVolumeEP = null;
+        sceneVolumeEPBounds = new Bounds();
+        sceneVolumeEPBounds = new Bounds();
+
+
+        DestroyImmediate(EPMaterial); 
+        DestroyImmediate(LPMaterial);
         ResetLightProbes(true);
         ResetEvaluationPoints(true);
+        RemoveOldLightProbes();
     }
     private ArrayList populatePlacementPopup() {
         ArrayList options = new ArrayList();
@@ -346,6 +372,10 @@ public class LumibricksScript : MonoBehaviour
             renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
             renderer.receiveGI = ReceiveGI.LightProbes;
             renderer.allowOcclusionWhenDynamic = false;
+            if (EPMaterial == null) {
+                EPMaterial = new Material(Shader.Find("Unlit/Color"));
+                EPMaterial.color = new Color(0.87f, 0.55f, 0.15f);
+            }
             renderer.sharedMaterial = EPMaterial;
         }
         MeshCollider collider = defaultobj.GetComponent<MeshCollider>();
@@ -373,6 +403,16 @@ public class LumibricksScript : MonoBehaviour
             collider.enabled = false;
         }
     }
+    private void SetLightProbeProperties(GameObject obj, Vector3 position, int index, GameObject parenttobject) {
+        obj.transform.position = position;
+        obj.transform.parent = parenttobject.transform;
+        obj.SetActive(true);
+        obj.name = "Evaluation Point " + index.ToString();
+        Collider collider = obj.GetComponent<Collider>();
+        if (collider != null) {
+            collider.enabled = false;
+        }
+    }
     private List<Vector3> GetEPList(GeneratorInterface generator) {
         List<Vector3> EPList = new List<Vector3>();
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
@@ -386,6 +426,54 @@ public class LumibricksScript : MonoBehaviour
         return EPList;
     }
 
+    public void RemoveOldLightProbes() {
+        GameObject evaluationObjectParent = GameObject.Find("RemovedLightProbes");
+        DestroyImmediate(evaluationObjectParent);
+        removedLPListPositions.Clear();
+        removedLPListSH.Clear();
+    }
+    public void ShowRemovedLightProbes(bool reset) {
+        GameObject evaluationObjectParent = GameObject.Find("RemovedLightProbes");
+
+        // if the list contains elements and the game objects have been created, just turn them on/off
+        if (removedLPListPositions.Count > 0 && evaluationObjectParent != null) {
+            evaluationObjectParent.transform.localScale = isShowLPsEnabled ? new Vector3(1, 1, 1) : Vector3.zero;
+            return;
+        }
+
+        // do nothing on empty list
+        if (removedLPListPositions.Count <= 0) {
+            return;
+        }
+
+        // create the list
+        evaluationObjectParent = new GameObject("RemovedLightProbes");
+        GameObject defaultobj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        defaultobj.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
+        MeshRenderer renderer = defaultobj.GetComponent<MeshRenderer>();
+        if (renderer) {
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
+            renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            renderer.receiveGI = ReceiveGI.LightProbes;
+            renderer.allowOcclusionWhenDynamic = false;
+            if (LPMaterial == null) {
+                LPMaterial = new Material(Shader.Find("Unlit/Color"));
+                LPMaterial.color = new Color(0.67f, 0.15f, 0.15f);
+            }
+            renderer.sharedMaterial = LPMaterial;
+        }
+        MeshCollider collider = defaultobj.GetComponent<MeshCollider>();
+        if (collider) {
+            collider.enabled = false;
+        }
+        SetLightProbeProperties(defaultobj, removedLPListPositions[0], 0, evaluationObjectParent);
+        for (int i = 1; i < removedLPListPositions.Count; i++) {
+            GameObject obj = Instantiate(defaultobj, removedLPListPositions[i], Quaternion.identity);
+            SetLightProbeProperties(obj, removedLPListPositions[i], i, evaluationObjectParent);
+        }
+    }
     public void DecimateLightProbes(bool reset) {
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -408,6 +496,9 @@ public class LumibricksScript : MonoBehaviour
             LumiLogger.Logger.LogWarning("No evaluation points found");
             return;
         }
+
+        // reset old list
+        RemoveOldLightProbes();
 
         bool isCancelled = false;
         // STEP 1. Bake
@@ -456,7 +547,7 @@ public class LumibricksScript : MonoBehaviour
         int num_probes_before_decimation = numProbes;
         List<Vector3> result = new List<Vector3>();
         if (!isCancelled) {
-            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, EPList, probeList);
+            result = m_evaluator.DecimateBakedLightProbes(this, ref isCancelled, EPList, probeList, ref removedLPListPositions, ref removedLPListSH);
         }
 
         // STEP 6. Finalize
@@ -464,10 +555,11 @@ public class LumibricksScript : MonoBehaviour
             currentLightProbesGenerator.Positions = result;
             m_evaluator.finalLightProbes = currentLightProbesGenerator.Positions.Count;
             m_evaluator.decimatedLightProbes = num_probes_before_decimation - currentLightProbesGenerator.Positions.Count;
-            // Set Positions to LightProbeGroup
             LightProbeGroup.probePositions = result.ToArray();
             LumiLogger.Logger.Log("Decimated " + m_evaluator.decimatedLightProbes.ToString() + " light probes, " + m_evaluator.finalLightProbes + " left");
+            ShowRemovedLightProbes(false);
         } else {
+            RemoveOldLightProbes();
             LumiLogger.Logger.Log("Decimation cancelled");
         }
 

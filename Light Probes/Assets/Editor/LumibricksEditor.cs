@@ -21,6 +21,7 @@ public class LightProbesEditor : Editor
         public bool clickedPlaceEvaluationPoints = false;
         public bool clickedBakeLightProbes = false;
         public bool clickedDecimateLightProbes = false;
+        public bool clickedShowRemovedLightProbes = false;
 
         public void Reset() {
             clickedSuccess = false;
@@ -30,6 +31,7 @@ public class LightProbesEditor : Editor
             clickedPlaceEvaluationPoints = false;
             clickedBakeLightProbes = false;
             clickedDecimateLightProbes = false;
+            clickedShowRemovedLightProbes = false;
         }
         public bool anyClicked() {
             return !clickedResetLightProbes && !clickedPlaceLightProbes &&
@@ -95,6 +97,11 @@ public class LightProbesEditor : Editor
         // Start Process - Decimate Light Probes
         if (populateGUIResponse.clickedDecimateLightProbes) {
             RunFunc(script.DecimateLightProbes, "Decimate Light Probes", "Decimate", false);
+        }
+
+        // Start Process - Decimate Light Probes
+        if (populateGUIResponse.clickedShowRemovedLightProbes) {
+            RunFunc(script.ShowRemovedLightProbes, "Show Removed Light Probes", "Show Removed");
         }
     }
     #endregion
@@ -224,6 +231,7 @@ public class LightProbesEditor : Editor
                     EditorGUILayout.LabelField("Decimate Probes", CustomStyles.EditorStylesMainAction);
                     EditorGUILayout.Space();
                     populateGUIResponse.clickedDecimateLightProbes = script.populateGUI_Decimate();
+                    populateGUIResponse.clickedShowRemovedLightProbes = script.populateGUI_ShowRemovedLP();
                 }
                 EditorGUILayout.EndVertical();
             }
