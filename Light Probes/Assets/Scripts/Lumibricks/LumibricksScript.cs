@@ -502,10 +502,11 @@ public class LumibricksScript : MonoBehaviour
 
         bool isCancelled = false;
         // STEP 1. Bake
-        isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Baking", 0.0f);
-        Lightmapping.Bake();
-        if (!isCancelled) {
+        if (probeList.Count != LightmapSettings.lightProbes.bakedProbes.Length) {
+            isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Baking", 0.0f);
+            Lightmapping.Bake();
         }
+
 
         // STEP 2. Reset light probe and evaluation data
         // set light probes
