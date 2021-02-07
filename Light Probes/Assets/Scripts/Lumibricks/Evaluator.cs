@@ -1,6 +1,4 @@
-﻿#define FAST_IMPL
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -221,11 +219,14 @@ class Evaluator
             }
             // set previous results to tetrahedron
             else {
-                currentEvaluationResults.AddRange(oldEvaluationResults.GetRange(evaluationPositionIndex * resultsPerDirection, resultsPerDirection));
+                evaluateTetrahedron(ref currentEvaluationResults, evaluationPositionIndex, directions, resultsPerDirection);
+                // TODO: this should be enabled when local neighbourhood evaluation is implemented correctly
+                //currentEvaluationResults.AddRange(oldEvaluationResults.GetRange(evaluationPositionIndex * resultsPerDirection, resultsPerDirection));
             }
         }
         return currentEvaluationResults;
     }
+
     public List<Vector3> DecimateBakedLightProbes(LumibricksScript script, ref bool isCancelled, List<Vector3> evaluationPoints, List<Vector3> lightProbePositions) {
         // TODO: add iterate [DONE]
         // TODO: optimize [NOT], e.g. stochastic [DONE]
@@ -258,10 +259,13 @@ class Evaluator
 
         System.Diagnostics.Stopwatch stopwatch;
 
-#if FAST_IMPL
-        List<Color> decimatedEvaluationResults = referenceEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
-#endif
-       
+        // holds the current minimum evaluation results
+        //List<Color> decimatedEvaluationResultsMin = new List<Color>(referenceEvaluationResults);
+        //List<Color> prevEvaluationResults = new List<Color>(referenceEvaluationResults);
+        //List<List<int>> mappingLPtoEPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
+        int decimatedIndexMin = -1;
+        double decimatedCostMin = double.MaxValue;
+
         float progress_range = terminationMaxLightProbes - terminationCurrentLightProbes;
         float progress_step = 1 / (progress_range);
         System.DateTime startTime = System.DateTime.Now;
@@ -272,21 +276,15 @@ class Evaluator
             // Step 1: Ideally use a stochastic approach, i.e. remove random N at each iteration. [Done]
             // Step 2: Only perform mapping in the vicinity of the removed light probe. [NOT]
             // Step 3: Only evaluate points in the vicinity of the probe. [DONE]
-            int decimatedIndex = -1;
-            double decimatedCostMin = double.MaxValue;
-
-            int random_samples_each_iteration = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
-
-#if FAST_IMPL
-            List<Color> prevEvaluationResults = decimatedEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
-            List<List<int>> mappingEPtoLPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
-#endif
 
             float progress = 0.0f; 
             if (isTerminationCurrentLightProbes) {
                 progress = (lightProbePositions.Count - finalPositionsDecimated.Count) / progress_range;
             }
+
+            int random_samples_each_iteration = (is_stochastic) ? Mathf.Min(num_stochastic_samples, finalPositionsDecimated.Count) : finalPositionsDecimated.Count;
             for (int i = 0; i < random_samples_each_iteration && !isCancelled; i++) {
+                // update progress bar
                 System.TimeSpan interval = (System.DateTime.Now - startTime);
                 string timeText = string.Format("{0:D2}:{1:D2}:{2:D2}", interval.Hours, interval.Minutes, interval.Seconds);
                 //LumiLogger.Logger.Log((progress).ToString("0.0%"));
@@ -299,6 +297,7 @@ class Evaluator
                     float internal_progress = progress + (progress_step * i / (float)(random_samples_each_iteration));
                     isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (internal_progress).ToString("0.0%"), timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), internal_progress);
                   }
+
                 // 1. Remove Light Probe from Set
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 int random_index = (is_stochastic) ? Random.Range(0, finalPositionsDecimated.Count) : i;
@@ -321,11 +320,12 @@ class Evaluator
 
                 // 3. Evaluate only the points that have changed
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                // Flag the points that have been changed
-                foreach (int j in mappingLPtoEP[random_index]) {
-                    tetrahedronGraph.FlagΑsChanged(j, true);
-                }
-                List<Color> currentEvaluationResults = EvaluatePoints(evaluationPoints, prevEvaluationResults);
+                // Flag the evaluation points that have changed for the removed Light Probe
+                /*foreach (int evalIndex in mappingLPtoEP[random_index]) {
+                    tetrahedronGraph.FlagEvaluationPointΑsChanged(evalIndex, true);
+                }*/
+                //List<Color> currentEvaluationResults = EvaluatePoints(evaluationPoints, prevEvaluationResults);
+                List<Color> currentEvaluationResults = EvaluatePoints(evaluationPoints, null);
                 stopwatch.Stop();
                 reportTimer.step3Time += stopwatch.ElapsedMilliseconds;
 
@@ -338,17 +338,18 @@ class Evaluator
                 // 5. Find light probe with the minimum error
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 if (decimatedCost > 0 && decimatedCost < decimatedCostMin) {
-                    decimatedIndex = i;
+                    decimatedIndexMin = i;
                     decimatedCostMin = decimatedCost;
-
-#if FAST_IMPL
-                    decimatedEvaluationResults = prevEvaluationResults.ConvertAll(res => new Color(res.r, res.g, res.b));
-                    foreach (int j in mappingLPtoEP[random_index])
-                        decimatedEvaluationResults[j] = new Color(currentEvaluationResults[j].r, currentEvaluationResults[j].g, currentEvaluationResults[j].b);
-
-                    mappingEPtoLPDecimatedMin = mappingLPtoEPDecimated.ConvertAll(res => new List<int>(res.ToArray()));
-#endif                        
+                    /*decimatedEvaluationResultsMin = new List<Color>(prevEvaluationResults);
+                    foreach (int j in mappingLPtoEP[random_index]) {
+                        decimatedEvaluationResultsMin[j] = new Color(currentEvaluationResults[j].r, currentEvaluationResults[j].g, currentEvaluationResults[j].b);
+                    }
+                    mappingLPtoEPDecimatedMin = new List<List<int>>(mappingLPtoEPDecimated);
+                    */
                 }
+
+                //LumiLogger.Logger.Log("Iteration: " + iteration + ", Probe " + i + " with cost " + decimatedCost.ToString() + ", Min Cost: " + decimatedCostMin);
+
                 stopwatch.Stop();
                 reportTimer.step5Time += stopwatch.ElapsedMilliseconds;
 
@@ -360,7 +361,7 @@ class Evaluator
                 reportTimer.step6Time += stopwatch.ElapsedMilliseconds;
             }
 
-            if (decimatedIndex == -1) {
+            if (decimatedIndexMin == -1) {
                 LumiLogger.Logger.LogError("No probe found during the iteration");
             }
 
@@ -370,22 +371,29 @@ class Evaluator
                 break;
             }
             // 6. Remove light probe with the minimum error
-            finalPositionsDecimated.RemoveAt(decimatedIndex);
-            finalLightProbesDecimated.RemoveAt(decimatedIndex);
-            currentEvaluationError = decimatedCostMin;
+            finalPositionsDecimated.RemoveAt(decimatedIndexMin);
+            finalLightProbesDecimated.RemoveAt(decimatedIndexMin);
 
-#if FAST_IMPL
-            mappingLPtoEP = mappingEPtoLPDecimatedMin.ConvertAll(res => new List<int>(res.ToArray()));
-#endif
-            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndex.ToString());
+            // update reference values with the new ones
+            currentEvaluationError = decimatedCostMin;
+            //prevEvaluationResults = new List<Color>(decimatedEvaluationResultsMin);
+            //mappingLPtoEP = new List<List<int>>(mappingLPtoEPDecimatedMin);
+            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndexMin.ToString());
+
+            // reset to default state
+            //mappingLPtoEPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
+            decimatedIndexMin = -1;
+            decimatedCostMin = double.MaxValue;
+
             ++iteration;
         }
 
         {
+            // update progress bar
             float progress = (lightProbePositions.Count - finalPositionsDecimated.Count) / progress_range;
             System.TimeSpan interval = (System.DateTime.Now - startTime);
             string timeText = string.Format("{0:D2}:{1:D2}:{2:D2}", interval.Hours, interval.Minutes, interval.Seconds);
-            LumiLogger.Logger.Log((progress).ToString("0.0%"));
+            //LumiLogger.Logger.Log((progress).ToString("0.0%"));
             if (isTerminationCurrentLightProbes && isTerminationEvaluationError) {
                 isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation: " + "Progress: " + (progress).ToString("0.0%") + ", Error: " + currentEvaluationError.ToString("0.00") + "%", timeText + " Running: Remaining probes: " + finalPositionsDecimated.Count.ToString(), progress);
               } else if (isTerminationEvaluationError) {
@@ -416,7 +424,7 @@ class Evaluator
         var res = MapEvaluationPointsToLightProbes(probePositions, evalPositions, ref mappingLPtoEP);
         // also flag everything as changed
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
-            tetrahedronGraph.FlagΑsChanged(evaluationPositionIndex, true);
+            tetrahedronGraph.FlagEvaluationPointΑsChanged(evaluationPositionIndex, true);
         }
         return res;
     }
@@ -439,7 +447,7 @@ class Evaluator
         tetrahedronGraph.Init(evalPositions.Count);
         for (int evaluationPositionIndex = 0; evaluationPositionIndex < evalPositions.Count; evaluationPositionIndex++) {
             tetrahedronGraph.ResetEvaluationTetrahedron(evaluationPositionIndex);
-            tetrahedronGraph.FlagΑsChanged(evaluationPositionIndex, false);
+            tetrahedronGraph.FlagEvaluationPointΑsChanged(evaluationPositionIndex, false);
 
             // 1. Relate Evaluation Point with one Tetrahedron
             for (int tetrahedronIndex = 0; tetrahedronIndex < tetrahedronGraph.getNumTetrahedrons(); tetrahedronIndex++) {
@@ -450,10 +458,12 @@ class Evaluator
                 Vector4 indices = tetrahedronGraph.GetTetrahedronIndices(tetrahedronIndex);
                 tetrahedronGraph.SetEvaluationTetrahedronIndex(evaluationPositionIndex, tetrahedronIndex);
                 tetrahedronGraph.SetEvaluationTetrahedronWeights(evaluationPositionIndex, tetrahedronWeights);
+                /*
                 mappingList[(int)indices[0]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[1]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[2]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[3]].Add(evaluationPositionIndex);
+                */
                 ++mapped;
                 break;
             }
@@ -493,11 +503,13 @@ class Evaluator
                 tetrahedronGraph.SetEvaluationTetrahedronIndex(evaluationPositionIndex, min_index);
                 tetrahedronGraph.SetEvaluationTetrahedronWeights(evaluationPositionIndex, weights);
                 Debug.Assert(min_index > -1);
+                /*
                 Vector4 indices = tetrahedronGraph.GetTetrahedronIndices(min_index);
                 mappingList[(int)indices[0]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[1]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[2]].Add(evaluationPositionIndex);
                 mappingList[(int)indices[3]].Add(evaluationPositionIndex);
+               */
                 ++mapped_outside;
             }
         }

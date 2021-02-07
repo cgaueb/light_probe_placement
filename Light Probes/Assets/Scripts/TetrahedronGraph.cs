@@ -106,7 +106,7 @@ class TetrahedronGraph
     public bool ChangedEvaluationState(int evaluationPositionIndex) {
         return evaluationTetrahedronChanged[evaluationPositionIndex] == true;
     }
-    public void FlagΑsChanged(int index, bool changed) {
+    public void FlagEvaluationPointΑsChanged(int index, bool changed) {
         evaluationTetrahedronChanged[index] = changed;
     }
 
