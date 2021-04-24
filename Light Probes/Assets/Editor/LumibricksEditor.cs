@@ -3,7 +3,7 @@ using UnityEditor;
 using System.Diagnostics;
 using UnityEditor.AnimatedValues;
 
-[CustomEditor(typeof(LumibricksScript))]
+[CustomEditor(typeof(LumiProbesScript))]
 public class LightProbesEditor : Editor
 {
     #region Private Variables
@@ -46,7 +46,7 @@ public class LightProbesEditor : Editor
     #region Public Override Functions
     public override void OnInspectorGUI() {
 
-        LumibricksScript script = (LumibricksScript)target;
+        LumiProbesScript script = (LumiProbesScript)target;
         CustomStyles.setStyles();
 
         // Set LightProbeGroup
@@ -117,11 +117,14 @@ public class LightProbesEditor : Editor
     private void OnDestroy() // [TODO] not activated - we have to destroy EP game objs !
     {
         LumiLogger.Logger.Log("OnDestroy");
-        LumibricksScript script = (LumibricksScript)target;
+        LumiProbesScript script = (LumiProbesScript)target;
         //script.Destroy();
     }
+    Tool lastTool = Tool.None;
     private void OnEnable() {
         LumiLogger.Logger.Log("OnEnable");
+        lastTool = Tools.current;
+        Tools.current = Tool.None;
         ShowPlacedObjects = new AnimBool(selectionGridIndex == 0 ? true : false);
         ShowPlacedObjects.valueChanged.AddListener(Repaint);
         ShowConfiguration = new AnimBool(selectionGridIndex == 1 ? true : false);
@@ -129,14 +132,15 @@ public class LightProbesEditor : Editor
     }
     private void OnDisable() {
         LumiLogger.Logger.Log("OnDisable");
-        LumibricksScript script = (LumibricksScript)target;
+        Tools.current = lastTool;
+        LumiProbesScript script = (LumiProbesScript)target;
     }
 
     public Vector2 scrollPosition = Vector2.zero;
     private bool populateInspectorGUI() {
 
         populateGUIResponse.Reset();
-        LumibricksScript script = (LumibricksScript)target;
+        LumiProbesScript script = (LumiProbesScript)target;
         if (!script.Init()) {
             return false;
         }
@@ -148,7 +152,7 @@ public class LightProbesEditor : Editor
 
         EditorGUI.BeginDisabledGroup(!script.CanUseScript());
         {
-            EditorGUILayout.LabelField("Light Probes Cut Algorithm", CustomStyles.EditorStylesHeader);
+            EditorGUILayout.LabelField("Illumination-driver Light Probe Placement", CustomStyles.EditorStylesHeader);
             EditorGUILayout.Space();
         }
         EditorGUI.EndDisabledGroup();
@@ -163,8 +167,7 @@ public class LightProbesEditor : Editor
                 {
                     bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto Set Volumes", ""), CustomStyles.defaultGUILayoutOption);
                     if (clickedVolumesDebug) {
-                        script.sceneVolumeLP = GameObject.Find("ATestVolumeLP");
-                        script.sceneVolumeEP = GameObject.Find("BTestVolumeEP");
+                        script.populateGUI_LoadDebugVolumes();
                     }
                     populateGUIResponse.clickedBakeLightProbes = GUILayout.Button(
                         !script.isBaking() ? new GUIContent("Bake Light Probes (Async)", "Bake light probes") : new GUIContent("Cancel Bake", "Cancel Baking of light probes")
