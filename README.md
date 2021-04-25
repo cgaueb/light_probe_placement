@@ -23,7 +23,7 @@ This work proposes a light probe simplification method that preserves the indire
 
 ![UIPanels](figures/pipeline_horizontal.svg)
 
-Briefly, the the algorithm consists of two stages: **Setup**, to generate the reference light probe configuration, and **Simplification**, to perform the graph decimation.
+Briefly, the algorithm consists of two stages: **Setup**, to generate the reference light probe configuration, and **Simplification**, to perform the graph decimation.
 
 **Setup steps:**
 1. Generate a (dense) set of light probes (LP)
@@ -56,15 +56,14 @@ Briefly, the the algorithm consists of two stages: **Setup**, to generate the re
   
 ![UIPanels](figures/UIpanels.png)
 
-- One these are set, click *Bake Light Probes (Async)* and *Run Optimiser* (right):
+- Once these are set, click *Bake Light Probes (Async)* and *Run Optimiser* (right):
 
 ![Optimisation](figures/optimiser_results.png)
 
-
-The entire process is shown for the example scene below:
+The entire process is also illustrated for a test scene below:
 ![Examples](figures/examples.png)
 
-All info is logged in *LumiProbes_log.txt*.
+All messages are logged in the log file: *LumiProbes_log.txt*.
 
 ## How to Cite
 The license is [MIT](LICENSE). If you use the contents of this repository for your work, please cite it as described below:
@@ -91,7 +90,7 @@ Note: A proper bibtex will be uploaded when the poster becomes published.
 ## Notes-Limitations
 
 - This is a preliminary version of this research work
-- High-processing times are currently observed for high EP-LP counts. Various pipeline stages allow for useful optimisations, e.g. by exploiting spatial locality during the reconstruction of the new graphs.
+- High-processing times are currently observed for high EP-LP counts. Various pipeline stages allow for useful optimisations, e.g. by exploiting spatial locality during the generation of the new graphs.
 - With respect to the component implementation, some parts could be more conformant with Unity's implementation guidelines for productions purposes.
 - The component has been tested with Unity version 2021.1.4f1
 
