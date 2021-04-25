@@ -1,13 +1,13 @@
 # Illumination-driven Light Probe Placement
 
 ## Overview
-This repository contains the source code of a prototype implementation of for *[Eurographics 2021 Poster: Illumination-driven Light Probe Placement](https://diglib.eg.org/handle/10.2312/egp20211026)*, in the form of a Unity component.
+This repository contains the source code of a prototype implementation of the *[Eurographics 2021 Poster: Illumination-driven Light Probe Placement](https://diglib.eg.org/handle/10.2312/egp20211026)*, in the form of a Unity component. Some test scenes are also included. However, the source code can be simply added and used in a Unity project without the additional content in this repository.
 
 Some helpful/quick links are:
 - [Author version](https://kostasvardis.com/files/research/Illumination-driven%20Light%20Probe%20Placement%20-%20Author%20version.pdf) of the paper
 - YouTube [short video presentation](https://www.youtube.com/watch?v=n3ACAjlhgJQ) (3 min)
 - Direct link to the [source code](Light%20Probes/Assets/Scripts) of the Unity component. 
-- The important source code parts are in the *DecimateLightProbes* function in the [LumiProbesScript.cs](Light%20Probes/Assets/Scripts/LumiProbes/LumiProbesScript.cs) file.
+- The important parts are located in the *DecimateLightProbes* function in the [LumiProbesScript.cs](Light%20Probes/Assets/Scripts/LumiProbes/LumiProbesScript.cs) file.
 
 ### Table of Contents
 
@@ -16,57 +16,33 @@ Some helpful/quick links are:
 - [How to Cite](#How-to-Cite)
 - [Notes-Limitations](#Notes-Limitations)
 - [Acknowledgments](#Acknowledgments)
+- [References](#References)
 
 ## Algorithm Overview
 This work proposes a light probe simplification method that preserves the indirect illumination distribution in scenes with diverse lighting conditions. This is accomplished through an iterative graph simplification algorithm that discards probes, according to a set of evaluation points, that have the least impact on the global light field.
 
-<p align="center" style="text-align:center">
-  <img src="figures/pipeline_horizontal.svg">
-  <i>Light Probe Simplification Pipeline</i>
-</p>
+![UIPanels](figures/pipeline_horizontal.svg)
 
-Briefly, the steps of the algorithm are:
+Briefly, the the algorithm consists of two stages: **Setup**, to generate the reference light probe configuration, and **Simplification**, to perform the graph decimation.
 
-<style>
-   li:before { 
-    font-weight: 600;
-   }
-   ol li::marker { 
-  font-weight: 600;
-}
-   
-</style>
-<div style="background-color:var(--color-bg-tertiary); border: 1px solid #ddd; border-bottom:none; padding:4px 4px 4px 4px">
-<ol style="list-style-type: decimal;">
-    <li><strong>Setup</strong> (to generate the reference light probe configuration):
-        <ol style="list-style-type: lower-alpha;">
-            <li>Generate a (dense) set of light probes (LP)</li>
-            <li>Compute the LPs radiance field (e.g. SH coefficients) and store them in a graph</li>
-            <li>Generate a set of evaluation points (EP)</li>
-            <li>Compute the EPs incident energy by sampling a set of directions around each EP. The incoming energy for each direction is determined by interpolating the k-nearest LPs from the graph</li>
-            <li>Store the EP incident energy as a <it>reference</it></li>
-        </ol>
-    </li>
-    <li><strong>Simplification</strong> (to perform the graph decimation). <br/>While the requested <i>minimum LP</i> set and/or <i>maximum error</i> is not reached:
-        <ol style="list-style-type: lower-alpha;">
-            <li>Remove the LP with the minimum error:
-                <ol style="list-style-type: lower-roman;">
-                    <li>Select a candidate LP to remove and compute a new temp graph (with <i>n-1</i> LPs)</li>
-                    <li>Compute the new radiance field for the EPs, as in <strong>1d</strong></li>
-                    <li>Compute the error with the <it>reference</it> field as:
-                        <ol style="list-style-type: upper-alpha;">
-                        <li>Convert the RGB values to Luminance-Chrominance (YCoCg)</li>
-                        <li>Compare the YCoCg values using different weights to preserve different illumination characteristics (E.g. Y=1,Co,Cg=0 for Luminance-driven and Y=0.1,Co,Cg=0.45 for Chrominance-driven simplification)</li>
-                        </ol>
-                    </li>
-                    <li>Keep this graph configuration if it has the minimum error and go to <strong>i</strong></li>
-                </ol>
-            </li>
-        <li>Replace graph with the <i>n-1</i> LP graph with the minimum error</li>
-        </ol>
-    </li>
-</ol>
-</div>
+**Setup steps:**
+1. Generate a (dense) set of light probes (LP)
+2. Compute the LPs radiance field (e.g. SH coefficients) and store them in a graph
+3. Generate a set of evaluation points (EP)
+4. Compute the EPs incident energy by sampling a set of directions around each EP. The incoming energy for each direction is determined by interpolating the k-nearest LPs from the graph. Store either the result of each direction separately, or the *average* over all directions (approximate result, but less sensitive to outliers)
+5. Store the EP incident energy as a *reference*
+  
+**Simplification steps:**
+1. While the requested *minimum LP* set and/or *maximum error* is not reached:
+    1. Iterate over all LPs
+        1. Select a candidate LP to remove and compute a new temp graph (with *n-1* LPs)
+        2. Compute the new radiance field for the EPs, as in **1iv**
+        3. Compute the error with the *reference* field as:
+            - Convert the RGB values to Luminance-Chrominance, like YCoCg [[MS03]](#[MS03])
+            - Compare the YCoCg components using different weights to preserve different illumination characteristics (e.g. Y=1,Co,Cg=0 for Luminance-driven and Y=0.1,Co,Cg=0.45 for Chrominance-driven simplification)
+            - Compute the final cost based on absolute percentage errors, e.g. [SMAPE](https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error), or others
+        4. Keep this graph configuration if it has the minimum error and go to **a**
+    2. Replace graph with the *n-1* LP graph with the minimum error
 
 
 ## Unity Component Instructions
@@ -76,54 +52,19 @@ Briefly, the steps of the algorithm are:
 - Import the contents [source code](Light%20Probes/Assets/Scripts) of the Unity component and add the *LumiProbes* script in the *Light Probe Group*
 
 ### To Run
-- The component is configured in two panels: the Placement panel, which places the LPs and EPs, and the Settings Panel, which configures optimisation parameters:
-<div align="center" style="text-align:center;">
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/placement.png" width="350px"/>
-        <figcaption>Placement Panel</figcaption>
-    </figure>
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/settings.png" width="350px"/>
-        <figcaption>Settings Panel</figcaption>
-    </figure>
-</div>
-- One these are set, click *Bake Light Probes (Async)* and *Run Optimiser*:
-<div align="center" style="text-align:center;">
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/running.png" height="100px"/>
-        <figcaption>Optimisation Popup</figcaption>
-    </figure>
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/settings_final.png" height="100px"/>
-        <figcaption>Final Results Panel</figcaption>
-    </figure>
-</div>
+- The component is configured in two panels: the Placement panel  (left), which places the LPs and EPs, and the Settings Panel (right), which configures optimisation parameters:
+  
+![UIPanels](figures/UIpanels.png)
+
+- One these are set, click *Bake Light Probes (Async)* and *Run Optimiser* (right):
+
+![Optimisation](figures/optimiser_results.png)
+
 
 The entire process is shown for the example scene below:
-<div align="center" style="text-align:center;">
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/original.png" width="410px"/>
-        <figcaption>1. Original Scene</figcaption>
-    </figure>
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/volume.png" width="410px"/>
-        <figcaption>2. Add LP/EP Volume (if not, the scene bounds are used)</figcaption>
-    </figure>
-        <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/probes.png" width="410px"/>
-        <figcaption>3. Add Light Probes</figcaption>
-    </figure>
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/EP.png" width="410px"/>
-        <figcaption>4. Add Evaluation Points</figcaption>
-    </figure>
-    <figure style="vertical-align: top;display: inline-block;margin:0px;">
-        <img src="figures/final.png" width="410px"/>
-        <figcaption>5. Final Light Probe set. If satisfied, *bake* the result</figcaption>
-    </figure>
-</div>
+![Examples](figures/examples.png)
 
-All info is logged in a *LumiProbes_log.txt*.
+All info is logged in *LumiProbes_log.txt*.
 
 ## How to Cite
 The license is [MIT](LICENSE). If you use the contents of this repository for your work, please cite it as described below:
@@ -159,4 +100,9 @@ Any advice/additions are welcome!
 ## Acknowledgments
 This research is co-financed by Greece and the European Union (European Social Fund) through the Operational Programme "Human Resources Development, Education and Lifelong Learning 2014-2020" for the project "Modular Light Transport for Photorealistic Rendering on Low-power Graphics Processors" (5049904).
 
-The *Office*, *Block15* and *TestProbes* scene in this repository have been created by the [CG AUEB Group](http://graphics.cs.aueb.gr). The *Sponza* model was obtained from [Morgan McGuire’s Computer Graphics Archive](https://casual-effects.com/data). The *Ethan* character and all other scripts are part or have been modified from the [Unity's Standard Assets](https://assetstore.unity.com/packages/essentials/asset-packs/standard-assets-for-unity-2018-4-32351).
+The *Office*, *Block15* and *TestProbes* scenes in this repository have been created by the [CG AUEB Group](http://graphics.cs.aueb.gr). The *Sponza* model was obtained from [Morgan McGuire’s Computer Graphics Archive](https://casual-effects.com/data). The *Ethan* character and all other scripts are part or have been modified from the [Unity's Standard Assets](https://assetstore.unity.com/packages/essentials/asset-packs/standard-assets-for-unity-2018-4-32351).
+
+
+## References
+
+- <a name="[MS03]">[MS03]</a>Malver H., Sullivan G.: [YCoCg-R: A Color Space with RGB Reversibility and Low Dynamic Range](https://www.microsoft.com/en-us/research/publication/ycocg-r-a-color-space-with-rgb-reversibility-and-low-dynamic-range/). Tech. Rep. JVTI014r3. 21, Joint Video Team (JVT) of ISO/IEC MPEG & ITU-T VCEG, July 2003.
