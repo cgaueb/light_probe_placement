@@ -56,7 +56,7 @@ Briefly, the algorithm consists of two stages: **Setup**, to generate the refere
 ## Unity Component Instructions
 
 ### To Import
-- Add a [Light Probe Group](https://docs.unity3d.com/Manual/AssetPackagesCreate.html) object to your scene
+- Add a [Light Probe Group](https://docs.unity3d.com/Manual/class-LightProbeGroup.html) object to your scene
 - Import the contents [source code](Light%20Probes/Assets/Scripts) of the Unity component and add the *LumiProbes* script in the *Light Probe Group*
 
 ### To Run
