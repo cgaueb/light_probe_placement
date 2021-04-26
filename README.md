@@ -6,8 +6,16 @@ This repository contains the source code of a prototype implementation of the *[
 Some helpful/quick links are:
 - [Author version](https://kostasvardis.com/files/research/Illumination-driven%20Light%20Probe%20Placement%20-%20Author%20version.pdf) of the paper
 - YouTube [short video presentation](https://www.youtube.com/watch?v=n3ACAjlhgJQ) (3 min)
-- Direct link to the [source code](Light%20Probes/Assets/Scripts) of the Unity component. 
+- Direct link to the [unitypackage](unitypackage/lumiprobes.unitypackage), to directly import to your project 
+- Direct link to the source code of the Unity component: [Scripts](Light%20Probes/Assets/Scripts/LumiProbes) and [Editor](Light%20Probes/Assets/Editor/LumiProbesEditor.cs)
 - The important parts are located in the *DecimateLightProbes* function in the [LumiProbesScript.cs](Light%20Probes/Assets/Scripts/LumiProbes/LumiProbesScript.cs) file.
+
+Key Features:
+- Light Probe/Evaluation Point Placement Types: Grid (good for Light Probes), Stratified, Random, Poisson (good for Evaluation Points)
+- Stopping Conditions: Minimum Probes and Maximum Error
+- Two illumination-based simplification options:
+    - Luminance, for scenes with similar light colours, i.e. to retain a higher probe density at regions with high luminance transitions
+    - Chrominance, for scenes with contrasting light colours, i.e. to retain a higher probe density at regions with high chrominance variations
 
 ### Table of Contents
 
