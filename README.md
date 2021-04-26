@@ -109,6 +109,7 @@ This research is co-financed by Greece and the European Union (European Social F
 
 The *Office*, *Block15* and *TestProbes* scenes in this repository have been created by the [CG AUEB Group](http://graphics.cs.aueb.gr). The *Sponza* model was obtained from [Morgan McGuire’s Computer Graphics Archive](https://casual-effects.com/data). The *Ethan* character and all other scripts are part or have been modified from the [Unity's Standard Assets](https://assetstore.unity.com/packages/essentials/asset-packs/standard-assets-for-unity-2018-4-32351).
 
+The C# Poisson implementation for the LP/EP placement is based on Bart Wronski's implementation that you can find [here](https://github.com/bartwronski/PoissonSamplingGenerator).
 
 ## References
 
