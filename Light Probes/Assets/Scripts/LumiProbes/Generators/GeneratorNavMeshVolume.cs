@@ -2,7 +2,6 @@
 using UnityEngine.AI;
 using UnityEditor;
 using System.Collections.Generic;
-using System.Linq;
 
 public class GeneratorNavMeshVolume : GeneratorInterface
 {

@@ -50,12 +50,10 @@ public class LightProbesEditor : Editor
         CustomStyles.setStyles();
 
         // Set LightProbeGroup
-        var component = script.GetComponent<LightProbeGroup>();
-        if (component == null) {
-            LumiLogger.Logger.LogWarning("Not a LightProbeGroup component");
+        script.SetLightProbeGroup();
+        if (script.LightProbeGroup == null) {
             return;
         }
-        script.LightProbeGroup = component;
 
         // generate GUI Elements
         bool clickedSuccess = populateInspectorGUI();
@@ -112,27 +110,27 @@ public class LightProbesEditor : Editor
         GUIUtility.ExitGUI();
     }
     private void Awake() {
-        LumiLogger.Logger.Log("Awake");
+        //LumiLogger.Logger.Log("Awake");
     }
     private void OnDestroy() // [TODO] not activated - we have to destroy EP game objs !
     {
-        LumiLogger.Logger.Log("OnDestroy");
-        LumiProbesScript script = (LumiProbesScript)target;
+        //LumiLogger.Logger.Log("OnDestroy");
+        //LumiProbesScript script = (LumiProbesScript)target;
         //script.Destroy();
     }
-    Tool lastTool = Tool.None;
+    //Tool lastTool = Tool.None;
     private void OnEnable() {
-        LumiLogger.Logger.Log("OnEnable");
-        lastTool = Tools.current;
-        Tools.current = Tool.None;
+        //LumiLogger.Logger.Log("OnEnable");
+        //lastTool = Tools.current;
+        //Tools.current = Tool.None;
         ShowPlacedObjects = new AnimBool(selectionGridIndex == 0 ? true : false);
         ShowPlacedObjects.valueChanged.AddListener(Repaint);
         ShowConfiguration = new AnimBool(selectionGridIndex == 1 ? true : false);
         ShowConfiguration.valueChanged.AddListener(Repaint);
     }
     private void OnDisable() {
-        LumiLogger.Logger.Log("OnDisable");
-        Tools.current = lastTool;
+        //LumiLogger.Logger.Log("OnDisable");
+        //Tools.current = lastTool;
         LumiProbesScript script = (LumiProbesScript)target;
     }
 
@@ -165,7 +163,7 @@ public class LightProbesEditor : Editor
                 EditorGUILayout.Space();
                 EditorGUILayout.BeginHorizontal();
                 {
-                    bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto Set Volumes", ""), CustomStyles.defaultGUILayoutOption);
+                    bool clickedVolumesDebug = GUILayout.Button(new GUIContent("Auto Set Volumes", "Auto adds a TestVolumeLP and TestVolumeEP gameobject to LP and EPs if they exist (debug feature)"), CustomStyles.defaultGUILayoutOption);
                     if (clickedVolumesDebug) {
                         script.populateGUI_LoadDebugVolumes();
                     }

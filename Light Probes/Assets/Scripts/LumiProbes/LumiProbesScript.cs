@@ -53,16 +53,28 @@ public class LumiProbesScript : MonoBehaviour
 
     #region Constructor Functions
     public LumiProbesScript() {
-        LumiLogger.Logger.Log("LumiProbesScript Constructor");
+        //LumiLogger.Logger.Log("LumiProbesScript Constructor");
         m_evaluator = new Evaluator();
     }
     #endregion
 
     #region Public Functions
-    public bool Init() {
 
+    public void SetLightProbeGroup() {
+        if (LightProbeGroup != null) {
+            return;
+        }
         var component = GetComponent<LightProbeGroup>();
-        var nv = component.GetComponentInChildren<NavMeshAgent>();
+        if (component == null) {
+            LumiLogger.Logger.LogWarning("Not a LightProbeGroup component");
+            return;
+        }
+        LightProbeGroup = component;
+    }
+    public bool Init() {
+        SetLightProbeGroup();
+
+        //var nv = component.GetComponentInChildren<NavMeshAgent>();
 
         if (generatorListLightProbes != null || generatorListEvaluationPoints != null) {
         /*    if (nv != null && !generatorListLightProbes.ContainsKey(PlacementType.NavMesh)) {
@@ -83,7 +95,7 @@ public class LumiProbesScript : MonoBehaviour
         */
             return true;
         }
-        LumiLogger.Logger.Log("Init");
+        //LumiLogger.Logger.Log("Init");
 
         generatorListLightProbes = new Dictionary<PlacementType, GeneratorInterface>();
         generatorListLightProbes[PlacementType.Grid] = new GeneratorGrid();
@@ -259,8 +271,11 @@ public class LumiProbesScript : MonoBehaviour
 
     #region Private Functions
     private void Reset() {
-        LumiLogger.Logger.Log("Reset entered");
+        LumiLogger.Logger.Log("LumiProbes Reset");
 
+        if (currentLightProbesGenerator == null) {
+            Init();
+        }
         m_evaluator.Reset(currentLightProbesGenerator.TotalNumProbes);
 
         LightProbesPlaceType = PlacementType.Grid;
@@ -276,14 +291,12 @@ public class LumiProbesScript : MonoBehaviour
         sceneVolumeEP = null;
         sceneVolumeEPBounds = new Bounds();
         sceneVolumeEPBounds = new Bounds();
-
-
-        DestroyImmediate(EPMaterial); 
-        DestroyImmediate(LPMaterial);
-        DestroyImmediate(LPWhiteMaterial);
         ResetLightProbes(true);
         ResetEvaluationPoints(true);
         RemoveOldLightProbes();
+        DestroyImmediate(EPMaterial);
+        DestroyImmediate(LPMaterial);
+        DestroyImmediate(LPWhiteMaterial);
     }
     private ArrayList populatePlacementPopup() {
         ArrayList options = new ArrayList();
@@ -323,10 +336,18 @@ public class LumiProbesScript : MonoBehaviour
         } else {
             // Compute Scene's Bounding Box
             Renderer[] rnds = FindObjectsOfType<Renderer>();
-            if (rnds.Length == 0) {
+            for (int i = 0; i < rnds.Length; i++) {
+                if (rnds[i].name.StartsWith("Evaluation Point ") ||
+                    rnds[i].name.StartsWith("Light Probe ") ||
+                    rnds[i].name.StartsWith("TestVolumeLP") ||
+                    rnds[i].name.StartsWith("TestVolumeEP")) {
+                    continue;
+                }
+                renderers.Add(rnds[i]);
+            }
+            if (renderers.Count == 0) {
                 return false;
             }
-            renderers.AddRange(rnds);
         }
 
         Bounds b = renderers[0].bounds;
@@ -383,7 +404,7 @@ public class LumiProbesScript : MonoBehaviour
             renderer.allowOcclusionWhenDynamic = false;
             if (EPMaterial == null) {
                 EPMaterial = new Material(Shader.Find("Standard"));
-                EPMaterial.SetColor("_DiffuseColor", new Color(0.0f, 0.0f, 0.0f));
+                EPMaterial.SetColor("_Color", new Color(0.2f, 0.2f, 0.2f));
                 EPMaterial.SetColor("_EmissionColor", new Color(0.87f, 0.55f, 0.15f) * 0.75f);
                 EPMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
                 EPMaterial.EnableKeyword("_EMISSION");
@@ -428,6 +449,9 @@ public class LumiProbesScript : MonoBehaviour
     private List<Vector3> GetEPList(GeneratorInterface generator) {
         List<Vector3> EPList = new List<Vector3>();
         GameObject evaluationObjectParent = GameObject.Find("EvaluationGroup_" + generator.GeneratorName);
+        if (evaluationObjectParent == null) { 
+            return EPList;
+        }
         Transform[] evaluationObjectsTransforms = evaluationObjectParent.GetComponentsInChildren<Transform>();
         foreach (Transform child in evaluationObjectsTransforms) {
             if (child.parent == null) {
@@ -472,9 +496,8 @@ public class LumiProbesScript : MonoBehaviour
                     renderer.allowOcclusionWhenDynamic = false;
                     if (LPMaterial == null) {
                         LPMaterial = new Material(Shader.Find("Standard"));
-                        LPMaterial.SetColor("_DiffuseColor", new Color(1.0f, 1.0f, 1.0f));
+                        LPMaterial.SetColor("_Color", new Color(1.0f, 1.0f, 1.0f));
                         //LPMaterial.SetColor("_EmissionColor", new Color(0.67f, 0.15f, 0.15f) * 0.5f);
-                        //LPMaterial.SetColor("_EmissionColor", new Color(1.0f, 0.0f, 0.0f));
                         LPMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
                         //LPMaterial.EnableKeyword("_EMISSION");
                     }
@@ -493,6 +516,7 @@ public class LumiProbesScript : MonoBehaviour
         }
         return;
         // this shows the remained light probes
+        /*
         if (decimatedLPListPositions.Count > 0) {
             // create the 2nd list
             {
@@ -509,7 +533,7 @@ public class LumiProbesScript : MonoBehaviour
                     renderer.allowOcclusionWhenDynamic = false;
                     if (LPWhiteMaterial == null) {
                         LPWhiteMaterial = new Material(Shader.Find("Standard"));
-                        LPWhiteMaterial.SetColor("_DiffuseColor", new Color(2.0f, 2.0f, 2.0f));
+                        LPWhiteMaterial.SetColor("_Color", new Color(1.0f, 1.0f, 1.0f));
                         //LPMaterial.SetColor("_EmissionColor", new Color(1.0f, 1.0f, 1.0f));
                         LPWhiteMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
                     }
@@ -526,6 +550,7 @@ public class LumiProbesScript : MonoBehaviour
                 }
             }
         }
+        */
     }
     public void DecimateLightProbes(bool reset) {
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -555,7 +580,7 @@ public class LumiProbesScript : MonoBehaviour
 
         bool isCancelled = false;
         // STEP 1. Bake
-        if (probeList.Count != LightmapSettings.lightProbes.bakedProbes.Length) {
+        if (LightmapSettings.lightProbes == null || probeList.Count != LightmapSettings.lightProbes.bakedProbes.Length) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Baking", 0.0f);
             Lightmapping.Bake();
         }
@@ -581,9 +606,8 @@ public class LumiProbesScript : MonoBehaviour
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Mapping EP to LP", 0.0f);
             m_evaluator.Tetrahedralize(probeList);
-            LumiLogger.Logger.Log("Mapped " + probeList.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals");
             (int, int) mapped = m_evaluator.MapEvaluationPointsToLightProbes(probeList, EPList);
-            LumiLogger.Logger.Log("Mapped " + EPList.Count + " EPs: " +
+            LumiLogger.Logger.Log("Mapped " + probeList.Count + " LPs to " + (m_evaluator.getNumTetrahedrons()) + " tetrahedrals. Mapped " + EPList.Count + " EPs: " +
                 mapped.Item1.ToString() + " (" + (mapped.Item1 / (float)(EPList.Count)).ToString("0.00%") + ") to tetrahedrons" +
                 " and " +
                 mapped.Item2.ToString() + " (" + (mapped.Item2 / (float)(EPList.Count)).ToString("0.00%") + ") to triangles" +
@@ -594,7 +618,7 @@ public class LumiProbesScript : MonoBehaviour
         if (!isCancelled) {
             isCancelled = EditorUtility.DisplayCancelableProgressBar("Decimation", "Running: Generating Reference", 0.0f);
             m_evaluator.GenerateReferenceEvaluationPoints(EPList);
-            LumiLogger.Logger.Log("Generate reference EP");
+            //LumiLogger.Logger.Log("Generated reference EP");
         }
 
         // STEP 5. Run decimation

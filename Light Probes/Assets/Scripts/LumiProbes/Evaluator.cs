@@ -40,7 +40,7 @@ class Evaluator
 
     #region Constructor Functions
     public Evaluator() {
-        LumiLogger.Logger.Log("Evaluator Constructor");
+        //LumiLogger.Logger.Log("Evaluator Constructor");
         reportTimer = new ReportTimer();
         metricsManager = new MetricsManager();
         solversManager = new SolversManager();
@@ -144,7 +144,7 @@ class Evaluator
     public bool populateGUI_Decimate(LumiProbesScript script, GeneratorInterface currentEvaluationPointsGenerator) {
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimiser", "Optimizes light probes"), CustomStyles.defaultGUILayoutOption);
+        bool clickedDecimateLightProbes = GUILayout.Button(new GUIContent("Run Optimiser", "Optimizes light probes (does not bake the final result)"), CustomStyles.defaultGUILayoutOption);
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
@@ -258,7 +258,7 @@ class Evaluator
         LumiLogger.Logger.Log("Starting Decimation. Settings: " +
             "LPs: " + script.CurrentLightProbesGenerator.TotalNumProbes +
             ", EPs: " + script.CurrentEvaluationPointsGenerator.TotalNumProbes +
-            ", LP Evaluation method: " + directionSamplingGenerator.EvaluationType.ToString() + "(" + directionSamplingGenerator.GetDirectionCount() + ")" +
+            ", LP Evaluation method: " + directionSamplingGenerator.EvaluationType.ToString() + " (" + directionSamplingGenerator.GetDirectionCount() + ")" +
             ", Averaging EP directions: " + averageDirections.ToString() +
            // ", Stochastic: " + (is_stochastic ? num_stochastic_samples.ToString() : "Disabled") +
             ", Solver: " + solversManager.CurrentSolverType.ToString() +
@@ -319,6 +319,15 @@ class Evaluator
                 stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 Tetrahedralize(finalPositionsDecimated);
                 (int, int) mapresult = MapEvaluationPointsToLightProbes(finalPositionsDecimated, evaluationPoints, ref mappingLPtoEPDecimated);
+                if (mapresult.Item1 == -1) {
+                    // invalid result (4 planar probes?), add back the item and continue
+                    stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    finalPositionsDecimated.Insert(random_index, last_position_removed);
+                    finalLightProbesDecimated.Insert(random_index, last_SH_removed);
+                    stopwatch.Stop();
+                    reportTimer.step6Time += stopwatch.ElapsedMilliseconds;
+                    continue;
+                }
                 Debug.Assert(evaluationPoints.Count - mapresult.Item1 - mapresult.Item2 == 0);
                 stopwatch.Stop();
                 reportTimer.step2Time += stopwatch.ElapsedMilliseconds;
@@ -367,7 +376,8 @@ class Evaluator
             }
 
             if (decimatedIndexMin == -1) {
-                LumiLogger.Logger.LogError("No probe found during the iteration");
+                LumiLogger.Logger.LogError("No probe found during the iteration. Forced stopping.");
+                break;
             }
 
             // if we have terminated on error, skip this iteration
@@ -385,7 +395,7 @@ class Evaluator
             currentEvaluationError = decimatedCostMin;
             //prevEvaluationResults = new List<Color>(decimatedEvaluationResultsMin);
             //mappingLPtoEP = new List<List<int>>(mappingLPtoEPDecimatedMin);
-            LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndexMin.ToString());
+            //LumiLogger.Logger.Log("Iteration: " + iteration.ToString() + ". Error: " + decimatedCostMin.ToString() + ". Removed probe: " + decimatedIndexMin.ToString());
 
             // reset to default state
             //mappingLPtoEPDecimatedMin = new List<List<int>>(finalLightProbesDecimated.Count - 1);
@@ -509,6 +519,12 @@ class Evaluator
                 }
                 tetrahedronGraph.SetEvaluationTetrahedronIndex(evaluationPositionIndex, min_index);
                 tetrahedronGraph.SetEvaluationTetrahedronWeights(evaluationPositionIndex, weights);
+                if (min_index == -1) {
+                    // we are probably on a plane. Skip this configuration entirely
+                    stopwatch.Stop();
+                    reportTimer.mappingTime += stopwatch.ElapsedMilliseconds;
+                    return (-1, -1);
+                }
                 Debug.Assert(min_index > -1);
                 /*
                 Vector4 indices = tetrahedronGraph.GetTetrahedronIndices(min_index);
