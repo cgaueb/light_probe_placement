@@ -86,13 +86,16 @@ In our work, we have used the source code~\cite{Vardis_2021_EG_2021_Poster}, ava
 <pre style="white-space:pre-wrap;">
 @article{Vardis_2021_EG_2021_Poster,
     booktitle = {Eurographics 2021 - Posters},
+    editor = {Bittner, Jirí and Waldner, Manuela},
     title = {{Illumination-driven Light Probe Placement}},
-    author = {Vardis, Konstantinos and Vasilakis, Andreas-Alexandros and Papaioannou, Georgios},
+    author = {Vardis, Konstantinos and Vasilakis, Andreas Alexandros and Papaioannou, Georgios},
     year = {2021},
     publisher = {The Eurographics Association},
+    ISSN = {1017-4656},
+    ISBN = {978-3-03868-134-2},
+    DOI = {10.2312/egp.20211026}
 }
 </pre>
-Note: A proper bibtex will be uploaded when the poster becomes published.
 </blockquote>
 
 ## Notes-Limitations
